@@ -10,7 +10,7 @@ export function SignalLoading({ label = "Loading" }: { label?: string }) {
       <div className="signal-loading-panel" role="status" aria-live="polite" aria-label={label}>
         <div className="signal-loading-brand">
           <span className="signal-loading-brand-mark"><AviatorBrandMark className="header-plane-mark" /></span>
-          <span>CASINO WORLD</span>
+          <span>GAMES HUB</span>
           <span className="signal-loading-lights" aria-hidden="true">
             <i />
             <i />

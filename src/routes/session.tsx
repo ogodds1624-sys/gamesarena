@@ -125,8 +125,8 @@ function SessionPage() {
           aria-labelledby="connection-issue-title"
           aria-describedby="connection-issue-message"
         >
-          <section className="w-full max-w-sm rounded-3xl border border-white/15 bg-[#101512] px-6 py-7 text-center shadow-2xl">
-            <p className="text-xs font-extrabold tracking-[0.2em] text-[#f6d783]">CONNECTION STATUS</p>
+            <section className="w-full max-w-sm rounded-3xl border border-white/15 bg-[#121214] px-6 py-7 text-center shadow-2xl">
+            <p className="text-xs font-extrabold tracking-[0.2em] text-[#e50914]">CONNECTION STATUS</p>
             <h1 id="connection-issue-title" className="mt-3 text-2xl font-extrabold">
               Connection issue
             </h1>

@@ -108,7 +108,7 @@ function PackagesPage() {
           </span>
           <span>Back home</span>
         </Link>
-        <p className="package-kicker">Casino World <span aria-hidden="true">/</span> Session Menu</p>
+        <p className="package-kicker">Games Hub <span aria-hidden="true">/</span> Session Menu</p>
         <h1 className="package-title">
           Choose Your <span>Package</span>
         </h1>
@@ -142,24 +142,24 @@ function PackagesPage() {
                       <svg className="package-gold-bar" viewBox="0 0 48 48" fill="none" aria-hidden="true">
                         <defs>
                           <linearGradient id="coin-face" x1="8" y1="6" x2="40" y2="30" gradientUnits="userSpaceOnUse">
-                            <stop stopColor="#FFF3B0" />
-                            <stop offset=".5" stopColor="#F6C94E" />
-                            <stop offset="1" stopColor="#C9801A" />
+                            <stop stopColor="#FF5966" />
+                            <stop offset=".5" stopColor="#E50914" />
+                            <stop offset="1" stopColor="#A80712" />
                           </linearGradient>
                           <linearGradient id="coin-edge" x1="0" y1="0" x2="0" y2="1">
-                            <stop stopColor="#D9961F" />
-                            <stop offset="1" stopColor="#8A4A0B" />
+                            <stop stopColor="#72050B" />
+                            <stop offset="1" stopColor="#400408" />
                           </linearGradient>
                         </defs>
                         <path d="M8 34v-4c0-2.6 7.2-4.5 16-4.5s16 1.9 16 4.5v4c0 2.6-7.2 4.5-16 4.5S8 36.600 8 34Z" fill="url(#coin-edge)" />
-                        <ellipse cx="24" cy="30" rx="16" ry="4.500" fill="url(#coin-face)" stroke="#FFE99A" strokeWidth=".8" />
+                        <ellipse cx="24" cy="30" rx="16" ry="4.500" fill="url(#coin-face)" stroke="#FFB3B8" strokeWidth=".8" />
                         <path d="M8 26v-4c0-2.6 7.2-4.5 16-4.5s16 1.9 16 4.5v4c0 2.6-7.2 4.5-16 4.5S8 28.600 8 26Z" fill="url(#coin-edge)" />
-                        <ellipse cx="24" cy="22" rx="16" ry="4.500" fill="url(#coin-face)" stroke="#FFE99A" strokeWidth=".8" />
+                        <ellipse cx="24" cy="22" rx="16" ry="4.500" fill="url(#coin-face)" stroke="#FFB3B8" strokeWidth=".8" />
                         <path d="M8 18v-4c0-2.6 7.2-4.5 16-4.5s16 1.9 16 4.5v4c0 2.6-7.2 4.5-16 4.5S8 20.600 8 18Z" fill="url(#coin-edge)" />
-                        <ellipse cx="24" cy="14" rx="16" ry="4.500" fill="url(#coin-face)" stroke="#FFE99A" strokeWidth=".8" />
-                        <ellipse cx="24" cy="14" rx="9" ry="2.200" stroke="#B8710F" strokeWidth=".9" opacity=".7" />
+                        <ellipse cx="24" cy="14" rx="16" ry="4.500" fill="url(#coin-face)" stroke="#FFB3B8" strokeWidth=".8" />
+                        <ellipse cx="24" cy="14" rx="9" ry="2.200" stroke="#400408" strokeWidth=".9" opacity=".7" />
                         <path d="M14 12.500c3-1.500 9-1.800 13-.600" stroke="#fff" strokeWidth="1" strokeLinecap="round" opacity=".75" />
-                        <path d="M38 7l1.200 2.800L42 11l-2.800 1.200L38 15l-1.200-2.800L34 11l2.800-1.200L38 7Z" fill="#FFF3B0" />
+                        <path d="M38 7l1.200 2.800L42 11l-2.800 1.200L38 15l-1.200-2.800L34 11l2.800-1.200L38 7Z" fill="#FF5966" />
                       </svg>
                     ) : pack.id === "popular" ? (
                       <svg className="package-gold-bar" viewBox="0 0 48 48" fill="none" aria-hidden="true">

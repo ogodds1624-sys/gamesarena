@@ -10,6 +10,7 @@ import { clearPending } from "@/lib/pending-registration";
 import { openTask } from "@/lib/task-order";
 import { useLiveStorefront } from "@/lib/storefront-live";
 import { useBlocked } from "@/lib/blocked-users";
+import { VirtualPlay } from "@/components/virtual-play";
 
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>): { ref?: string } => {
@@ -28,8 +29,7 @@ const CALLS = [
   { n: 4824, label: "Trend check", x: "1.91x" },
 ];
 
-const WELCOME_TITLE = "WELCOME TO THE WORLD OF CASINO HACKS";
-const HOME_TITLE = "CASINO WORLD";
+const HOME_TITLE = "GAMES HUB";
 
 function Home() {
   const navigate = useNavigate();
@@ -40,7 +40,6 @@ function Home() {
   const blocked = useBlocked();
   const [tick, setTick] = useState(0);
   const [flightDisplay, setFlightDisplay] = useState({ amount: "1.00", isFlying: false });
-  const [welcomeTitle, setWelcomeTitle] = useState("");
 
   async function openAccount() {
     if (isPending || blocked) return;
@@ -53,31 +52,6 @@ function Home() {
 
   useEffect(() => {
     clearPending();
-  }, []);
-
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setWelcomeTitle(HOME_TITLE);
-      return;
-    }
-
-    let index = 0;
-    let finishTimer: number | undefined;
-    setWelcomeTitle("");
-
-    const typingTimer = window.setInterval(() => {
-      index += 1;
-      setWelcomeTitle(WELCOME_TITLE.slice(0, index));
-      if (index >= WELCOME_TITLE.length) {
-        window.clearInterval(typingTimer);
-        finishTimer = window.setTimeout(() => setWelcomeTitle(HOME_TITLE), 900);
-      }
-    }, 70);
-
-    return () => {
-      window.clearInterval(typingTimer);
-      if (finishTimer !== undefined) window.clearTimeout(finishTimer);
-    };
   }, []);
 
   useEffect(() => {
@@ -103,25 +77,28 @@ function Home() {
         <div className="hero-copy">
         <div className="welcome-title-wrap">
           <h1
-            className={"casino-title welcome-title " + (welcomeTitle === HOME_TITLE ? "is-brand" : "is-welcome")}
+            className="casino-title welcome-title is-brand"
             aria-label={HOME_TITLE}
             aria-live="off"
           >
-            {welcomeTitle === HOME_TITLE ? (
-              <>
-                <span>CASINO</span> <span className="casino-title-accent">WORLD</span>
-              </>
-            ) : (
-              <>
-                <span className="welcome-typing-text">{welcomeTitle}</span>
-                <span className="welcome-typing-caret" aria-hidden="true" />
-              </>
-            )}
+            <span>GAMES</span> <span className="casino-title-accent">HUB</span>
           </h1>
         </div>
-        <p className="hero-description-float mt-5 rounded-r-xl border-l-2 border-gold bg-black/35 px-4 py-3 text-left text-base leading-7 text-white/85 shadow-[0_8px_30px_rgba(0,0,0,0.18)] sm:text-lg sm:leading-8">
-          Our intelligent system analyzes live Aviator signals and multiplier trends to identify potential cash-out opportunities in real time.
-        </p>
+        <div className="hero-intro">
+          <p className="hero-intro-eyebrow">One hub. More ways to play.</p>
+          <h2 className="hero-intro-title">
+            Find your game.<br />
+            <span>Feel the moment.</span>
+          </h2>
+          <p className="hero-intro-description">
+            Explore Aviator multiplier trends and instant virtual games.
+            Your next experience is just a tap away.
+          </p>
+          <div className="hero-intro-features" aria-label="Explore Games Hub">
+            <span><Plane size={14} aria-hidden="true" /> Aviator</span>
+            <span><Activity size={14} aria-hidden="true" /> Instant virtual</span>
+          </div>
+        </div>
         {store && store.rates.length > 0 ? (
           <p className="mt-3 text-sm text-muted">
             {store.rates.map((rate) => `${rate.country} ${rate.unit}${rate.perGhs} per GHS`).join(" · ")}
@@ -168,7 +145,7 @@ function Home() {
                   </span>
                 </div>
                 <div className="iphone-appbar">
-                  <span className="iphone-app-title">CASINO <b>WORLD</b></span>
+                  <span className="iphone-app-title">GAMES <b>HUB</b></span>
                   <span className="iphone-live-label"><i /> LIVE</span>
                 </div>
                 <div className="iphone-chart">
@@ -234,6 +211,8 @@ function Home() {
             <p className="predictor-footnote">Choose a session to access the signal desk.</p>
           </div>
         </article>
+
+        <VirtualPlay />
 
         <section className="relative mt-6 overflow-hidden rounded-[1.75rem] border border-gold/20 bg-[radial-gradient(ellipse_at_top_right,_rgba(240,193,77,0.12),_transparent_42%),linear-gradient(145deg,_#171b18,_#0c0f0d_62%,_#080909)] p-4 shadow-[0_24px_70px_rgba(0,0,0,0.38)] sm:p-5">
           <div className="relative mb-5 flex items-center justify-between gap-3 border-b border-white/[0.08] pb-4">

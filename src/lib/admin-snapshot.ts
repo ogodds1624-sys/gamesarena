@@ -900,7 +900,7 @@ export const getStorefront = createServerFn({ method: "GET" })
     ].filter((rate) => rate.perGhs > 0);
     return {
       pricing: snapshot.pricing,
-      businessName: checkout.businessName || "Casino",
+      businessName: checkout.businessName || "Games Hub",
       whatsapp: checkout.whatsapp,
       email: checkout.email,
       wallets: checkout.momo ? checkout.wallets.filter((wallet) => wallet.number) : [],
@@ -1879,7 +1879,7 @@ export const saveGatewayRates = createServerFn({ method: "POST" })
 
 const DEFAULT_CHECKOUT: GatewayCheckout = {
   currency: "GHS",
-  businessName: "Casino",
+  businessName: "Games Hub",
   whatsapp: "",
   email: "",
   paystack: false,
@@ -1973,7 +1973,7 @@ export const saveGatewayCheckout = createServerFn({ method: "POST" })
     }
     return {
       currency: "GHS",
-      businessName: String(data?.businessName ?? "").trim().slice(0, 80) || "Casino",
+      businessName: String(data?.businessName ?? "").trim().slice(0, 80) || "Games Hub",
       whatsapp,
       email,
       paystack: Boolean(data?.paystack),

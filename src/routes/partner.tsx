@@ -138,7 +138,7 @@ function PartnersPage() {
         <section className="menu-pop relative z-10 w-full max-w-md overflow-hidden rounded-3xl border border-white/10 bg-[#111111]/90 text-white backdrop-blur-sm">
           <div className="px-6 pt-8 text-center">
             <Diamond className="mx-auto size-7 fill-red text-red" aria-hidden />
-            <h1 className="mt-4 text-3xl font-black tracking-tight">CASINO WORLD</h1>
+            <h1 className="mt-4 text-3xl font-black tracking-tight">GAMES HUB</h1>
             <p className="mt-2 text-xs font-extrabold tracking-[0.22em] text-red">PARTNER ACCESS</p>
           </div>
           <div className="partner-auth-tabs mx-5 mt-7 grid grid-cols-2 gap-1 rounded-2xl p-1">
@@ -736,7 +736,7 @@ function Stat({
         <p className="text-xs font-bold tracking-[0.16em] text-white/50">{label}</p>
         <span className="grid size-11 place-items-center rounded-2xl bg-white/10 text-white">{icon}</span>
       </div>
-      <p className={"mt-4 text-4xl font-black tracking-tight " + (gold ? "text-[#f0c14d]" : "")}>{value}</p>
+      <p className={"mt-4 text-4xl font-black tracking-tight " + (gold ? "text-[#e50914]" : "")}>{value}</p>
       <div className="my-4 h-px bg-white/10" />
       <p className="text-sm text-white/60">{note}</p>
     </article>

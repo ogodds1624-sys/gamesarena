@@ -236,7 +236,7 @@ export function AccountLanding({ mode }: { mode: Mode }) {
           <span>Back home</span>
         </Link>
         <div className="auth-brand mt-3 mb-5 text-center">
-          <span className="text-xl font-extrabold tracking-tight">CASINO WORLD</span>
+          <span className="text-xl font-extrabold tracking-tight">GAMES HUB</span>
         </div>
         <h1 className={`auth-heading text-center${register ? " auth-heading-register" : ""}`}>
           {register ? "Create your account" : "Welcome back"}

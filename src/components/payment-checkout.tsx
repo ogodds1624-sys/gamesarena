@@ -295,7 +295,7 @@ export function PaymentCheckout({ activation = false, sessionAmount, packageId }
         <h1 className="text-2xl font-extrabold tracking-tight">
           {activation ? "Account activation fee" : selected?.kind === "bank" ? "Pay by bank transfer" : "Pay by MoMo transfer"}
         </h1>
-        <p className="mt-1 text-sm text-white/65">{store?.businessName ?? "Casino World"}</p>
+        <p className="mt-1 text-sm text-white/65">{store?.businessName ?? "Games Hub"}</p>
         {activation ? <p className="mt-2 text-sm text-white/65">One-time payment. Admin approval is required before choosing a session package.</p> : null}
         {!activation ? <p className="mt-2 text-sm text-white/65">{purchased?.minutes ?? quote?.minutes} mins per session</p> : null}
           </div>

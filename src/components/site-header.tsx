@@ -40,7 +40,7 @@ export const SiteHeader = memo(function SiteHeader() {
     <header className="site-header sticky top-0 z-40 bg-ink">
       <Link to="/" className="flex min-w-0 flex-1 items-center gap-2 text-white no-underline">
         <span className="truncate text-sm leading-none font-black tracking-tight italic sm:text-base">
-          CASINO <span className="text-gold">WORLD</span>
+          GAMES <span className="text-gold">HUB</span>
         </span>
       </Link>
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
