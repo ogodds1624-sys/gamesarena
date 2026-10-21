@@ -283,12 +283,17 @@ test("authentication transport diagnostics contain only booleans", async () => {
     logs.push(args);
   };
   try {
-    const client = createScanClient("sk-test-placeholder", async () =>
-      Response.json(
+    const client = createScanClient("sk-test-placeholder", async (_input, init) => {
+      assert.ok(!(init?.headers instanceof Headers));
+      assert.equal(
+        (init?.headers as Record<string, string>).authorization,
+        "Bearer sk-test-placeholder",
+      );
+      return Response.json(
         { error: { code: "invalid_api_key", message: "private provider text" } },
         { status: 401 },
-      ),
-    );
+      );
+    });
     await assert.rejects(client.chat.completions.create({ model: "test", messages: [] }));
     assert.deepEqual(logs, [
       [

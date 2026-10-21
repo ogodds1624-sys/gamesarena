@@ -7,8 +7,12 @@ export function createScanClient(apiKey: string, transport: typeof fetch = globa
     timeout: 55_000,
     maxRetries: 0,
     fetch: async (input, init) => {
-      const authorization = new Headers(init?.headers).get("authorization");
-      const response = await transport(input, init);
+      const headers = new Headers(init?.headers);
+      const authorization = headers.get("authorization");
+      const response = await transport(input, {
+        ...init,
+        headers: Object.fromEntries(headers.entries()),
+      });
       if (response.status === 401) {
         console.error("[virtual-scan] Authentication transport", {
           authorizationPresent: Boolean(authorization),
