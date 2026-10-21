@@ -7,6 +7,7 @@ import { isScanMediaType, matchesScanSignature, MAX_SCAN_BYTES } from "./image-s
 import { analyzeScreenshot, createScanClient } from "./scan-analysis.server";
 import { encryptScanImage, normalizeScanImage, scanEncryptionKey } from "./scan-image-codec.server";
 import { processScanJob, readScanJobs } from "./scan-jobs.server";
+import { checkScanAuthentication } from "./scan-auth.server";
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export function scanReply(body: object, status = 200) {
@@ -59,6 +60,13 @@ export async function scanImage(request: Request): Promise<Response> {
       503,
     );
   const key = scanEncryptionKey(encryptionKey);
+  if (url.searchParams.get("action") === "check-auth") {
+    const [limit] = await sql<{ allowed: boolean }>`
+      select allow_virtual_scan_upload(${user.id}) as allowed
+    `;
+    if (!limit?.allowed) return scanReply({ error: "Authentication check limit reached." }, 429);
+    return scanReply(await checkScanAuthentication(apiKey));
+  }
   if (url.searchParams.get("action") === "process") {
     const id = url.searchParams.get("id") ?? "";
     if (!uuid.test(id)) return scanReply({ error: "Invalid scan ID." }, 400);

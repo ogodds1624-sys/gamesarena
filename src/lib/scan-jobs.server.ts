@@ -12,6 +12,7 @@ import { decryptScanImage } from "./scan-image-codec.server.ts";
 export function scanErrorDiagnostics(error: unknown) {
   if (typeof error !== "object" || error === null) return {};
   const codes = [
+    "missing_api_key",
     "invalid_api_key",
     "invalid_organization",
     "organization_deactivated",
