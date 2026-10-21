@@ -23,7 +23,7 @@ import {
   scanEncryptionKey,
   normalizeScanImage,
 } from "./scan-image-codec.server.ts";
-import { processScanJob, readScanJobs } from "./scan-jobs.server.ts";
+import { processScanJob, readScanJobs, scanErrorDiagnostics } from "./scan-jobs.server.ts";
 import type { Sql } from "./db";
 
 function fixture(patch: Partial<Fixture> = {}): Fixture {
@@ -45,6 +45,34 @@ function fixture(patch: Partial<Fixture> = {}): Fixture {
     ...patch,
   };
 }
+
+test("provider diagnostics expose only allowlisted codes and validated request IDs", () => {
+  assert.deepEqual(
+    scanErrorDiagnostics({
+      code: "invalid_api_key",
+      type: "invalid_request_error",
+      request_id: "req_test123",
+      message: "secret credential or screenshot contents",
+      headers: { authorization: "private" },
+    }),
+    {
+      providerCode: "invalid_api_key",
+      providerType: "invalid_request_error",
+      providerRequestId: "req_test123",
+    },
+  );
+  const unsafe = scanErrorDiagnostics({
+    code: "sk-private-value",
+    type: "private-image-text",
+    request_id: "secret",
+  });
+  assert.deepEqual(unsafe, {
+    providerCode: "unrecognized",
+    providerType: "unrecognized",
+    providerRequestId: undefined,
+  });
+  assert.deepEqual(scanErrorDiagnostics(null), {});
+});
 function extraction(fixtures = [fixture()]): Extraction {
   return {
     screenshotType: "sportybet_instant_football",

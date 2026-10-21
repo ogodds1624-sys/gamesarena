@@ -200,6 +200,11 @@ Tests use the real SDK with mocked provider transport plus real image decoding,
 encryption and PGlite queue functions; they do not verify a live API key, live
 model accuracy, actual Neon credentials or a deployed cron scheduler.
 
+Scanner failure logs include HTTP status, allowlisted OpenAI error code/type and
+a format-validated OpenAI request ID for authentication troubleshooting. Unknown
+codes/types are replaced with `unrecognized`; raw provider messages, credentials,
+headers and screenshots are never logged.
+
 ## Admin pricing and package duration
 
 Open **Admin > Pricing & Packages** to edit the price and session minutes for each

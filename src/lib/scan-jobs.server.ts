@@ -9,6 +9,43 @@ import {
 } from "./image-scan.ts";
 import { decryptScanImage } from "./scan-image-codec.server.ts";
 
+export function scanErrorDiagnostics(error: unknown) {
+  if (typeof error !== "object" || error === null) return {};
+  const codes = [
+    "invalid_api_key",
+    "invalid_organization",
+    "organization_deactivated",
+    "account_deactivated",
+    "project_not_found",
+    "model_not_found",
+    "permission_denied",
+    "insufficient_permissions",
+    "insufficient_quota",
+    "rate_limit_exceeded",
+    "unsupported_country_region_territory",
+  ];
+  const types = [
+    "invalid_request_error",
+    "authentication_error",
+    "permission_error",
+    "insufficient_quota",
+    "server_error",
+  ];
+  const code = "code" in error ? error.code : undefined;
+  const type = "type" in error ? error.type : undefined;
+  const requestId = "request_id" in error ? error.request_id : undefined;
+  return {
+    providerCode:
+      typeof code === "string" ? (codes.includes(code) ? code : "unrecognized") : undefined,
+    providerType:
+      typeof type === "string" ? (types.includes(type) ? type : "unrecognized") : undefined,
+    providerRequestId:
+      typeof requestId === "string" && /^req_[a-zA-Z0-9_-]{1,100}$/.test(requestId)
+        ? requestId
+        : undefined,
+  };
+}
+
 export type JobRow = {
   id: string;
   user_id: string;
@@ -94,6 +131,7 @@ export async function processScanJob(
       attempt: job.attempts,
       type: error instanceof Error ? error.name : "UnknownError",
       status: typeof status === "number" ? status : undefined,
+      ...scanErrorDiagnostics(error),
     });
     await sql`select fail_structured_scan(
       ${job.id}::uuid,${token}::uuid,${retry},
