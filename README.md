@@ -164,7 +164,9 @@ odds may therefore produce no qualified selection.
 2. Deploy the existing project. Nitro's generated Vercel function uses a
    **90-second maxDuration**; the AI request has a 55-second timeout and no SDK
    retries. Verify your Vercel plan permits this duration.
-3. `vercel.json` schedules `GET /api/scan-worker` every minute. **Use a Vercel
+3. `vercel.json` alone schedules `GET /api/scan-worker` every minute. Do not also
+   copy this cron into Nitro's generated Build Output configuration: Vercel merges
+   the two and rejects duplicate schedule/path entries. **Use a Vercel
    plan supporting per-minute cron (normally Pro or higher)** or an equivalent
    authenticated external scheduler. Vercel sends `Authorization: Bearer
 <CRON_SECRET>`. Never expose the worker secret to the browser. Cron runs on
