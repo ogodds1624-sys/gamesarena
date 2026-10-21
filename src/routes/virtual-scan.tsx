@@ -1,16 +1,31 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Coins, ImagePlus, LoaderCircle, ScanLine, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Coins, ImagePlus, LoaderCircle, RefreshCw } from "lucide-react";
 import { getSportyLink, getVirtualCreditBalance, getVirtualScanAccess } from "@/lib/admin-snapshot";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { useBlocked } from "@/lib/blocked-users";
 import { SignalLoading } from "@/components/signal-loading";
-import { isScanMediaType, isScanResult, MAX_SCAN_BYTES, type ScanResult } from "@/lib/image-scan";
+import { ScanResults } from "@/components/scan-results";
+import {
+  isScanMediaType,
+  isTerminal,
+  MAX_SCAN_BYTES,
+  MAX_SCAN_FILES,
+  type ScanJob,
+} from "@/lib/image-scan";
+import { scanRequest, uploadScan } from "@/lib/scan-client";
 import { openTask } from "@/lib/task-order";
-import { getBearerToken } from "@/lib/auth/client";
 import { savePendingPayment } from "@/lib/desk-session";
 
 export const Route = createFileRoute("/virtual-scan")({ component: VirtualScan });
+type Upload = {
+  id: string;
+  file: File;
+  preview: string;
+  progress: number;
+  error: string | null;
+  jobId: string | null;
+};
 
 function VirtualScan() {
   const navigate = useNavigate();
@@ -18,19 +33,32 @@ function VirtualScan() {
   const userId = user?.id;
   const devFallback = user?.isDevFallback;
   const blocked = useBlocked();
-  const [balance, setBalance] = useState<number | null>(null);
   const [approvedUser, setApprovedUser] = useState<string | null>(null);
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [balance, setBalance] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<ScanResult | null>(null);
-  const requestId = useRef("");
-  const sending = useRef(false);
+  const [jobs, setJobs] = useState<ScanJob[]>([]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [uploads, setUploads] = useState<Upload[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [older, setOlder] = useState(false);
+  const uploadingRef = useRef(false);
+  const processing = useRef(false);
+  const nextProcessAt = useRef(0);
+  const previewUrls = useRef<string[]>([]);
+  const generation = useRef(0);
+  const fileInput = useRef<HTMLInputElement>(null);
 
+  useEffect(() => () => previewUrls.current.forEach((url) => URL.revokeObjectURL(url)), []);
   useEffect(() => {
+    const version = ++generation.current;
     setApprovedUser(null);
-    if (isPending) return;
+    setJobs([]);
+    setUploads([]);
+    previewUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    previewUrls.current = [];
+    setSelected(null);
+    setError(null);
+    if (isPending || blocked) return;
     let stopped = false;
     void (async () => {
       const link = await getSportyLink();
@@ -46,101 +74,187 @@ function VirtualScan() {
       const access = await getVirtualScanAccess();
       if (stopped) return;
       if (!access.approved) {
-        if (access.pending !== null) {
+        if (access.pending) {
           savePendingPayment(access.pending.id, access.pending.amount, "virtual_credits");
           await navigate({
             to: "/virtual-pay",
             search: { credits: access.pending.credits },
             replace: true,
           });
-        } else {
-          await navigate({ to: "/virtual-packages", replace: true });
-        }
+        } else await navigate({ to: "/virtual-packages", replace: true });
         return;
       }
       const wallet = await getVirtualCreditBalance();
-      if (!stopped) {
+      const history = await scanRequest();
+      if (!stopped && version === generation.current) {
         setBalance(wallet.balance);
+        setJobs(history);
+        setSelected(history[0]?.id ?? null);
+        setOlder(history.length === 20);
         setApprovedUser(userId);
       }
     })().catch((err: unknown) => {
-      if (!stopped) setError(err instanceof Error ? err.message : "Could not check scan access.");
+      if (!stopped)
+        setError(err instanceof Error ? err.message : "Could not check scanner access.");
     });
     return () => {
       stopped = true;
     };
-  }, [isPending, userId, devFallback, navigate, blocked]);
+  }, [isPending, userId, devFallback, blocked, navigate]);
+
+  function mergeJobs(incoming: ScanJob[]) {
+    setJobs((current) => {
+      const map = new Map(current.map((job) => [job.id, job]));
+      incoming.forEach((job) => map.set(job.id, job));
+      return [...map.values()].sort(
+        (a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id),
+      );
+    });
+  }
 
   useEffect(() => {
-    if (!file) {
-      setPreview("");
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    setPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
-
-  function selectFile(next: File | undefined) {
-    if (sending.current || !next) return;
-    setError(null);
-    if (!isScanMediaType(next.type) || next.size === 0 || next.size > MAX_SCAN_BYTES) {
-      setFile(null);
-      setResult(null);
-      setError("Choose a PNG, JPEG, or WebP screenshot up to 5 MB.");
-      return;
-    }
-    setFile(next);
-    setResult(null);
-    requestId.current = crypto.randomUUID();
-  }
-
-  async function scan() {
-    if (sending.current || !file || blocked || balance === null || balance < 1) return;
-    sending.current = true;
-    setBusy(true);
-    setError(null);
-    try {
-      const headers = new Headers({
-        "Content-Type": file.type,
-        "X-Scan-Id": requestId.current,
-      });
-      const token = getBearerToken();
-      if (token) headers.set("Authorization", `Bearer ${token}`);
-      const response = await fetch("/api/scan-image", {
-        method: "POST",
-        credentials: "same-origin",
-        headers,
-        body: file,
-      });
-      const data: unknown = await response.json();
-      if (!response.ok) {
-        const message =
-          typeof data === "object" &&
-          data !== null &&
-          "error" in data &&
-          typeof data.error === "string"
-            ? data.error
-            : "Could not scan this screenshot. Try again.";
-        throw new Error(message);
+    if (!userId || approvedUser !== userId || blocked) return;
+    let stopped = false;
+    let checking = false;
+    async function poll() {
+      if (checking) return;
+      checking = true;
+      try {
+        const incoming = await scanRequest();
+        const wallet = await getVirtualCreditBalance();
+        if (!stopped) {
+          mergeJobs(incoming);
+          setBalance(wallet.balance);
+        }
+      } catch (err: unknown) {
+        if (!stopped) setError(err instanceof Error ? err.message : "Could not refresh history.");
+      } finally {
+        checking = false;
       }
-      if (!isScanResult(data))
-        throw new Error("The scan response was invalid. Retry to retrieve the saved result.");
-      setResult(data);
-      setBalance(data.balance);
+    }
+    const timer = window.setInterval(() => void poll(), 4000);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, [approvedUser, userId, blocked]);
+
+  // A foreground worker makes local scans immediate. The DB lease and cron recover closed tabs.
+  useEffect(() => {
+    if (
+      processing.current ||
+      Date.now() < nextProcessAt.current ||
+      approvedUser !== userId ||
+      blocked
+    )
+      return;
+    const job = jobs.find((item) => item.status === "queued");
+    if (!job) return;
+    const version = generation.current;
+    processing.current = true;
+    nextProcessAt.current = Date.now() + 5000;
+    void scanRequest(`?action=process&id=${encodeURIComponent(job.id)}`, true)
+      .then((incoming) => {
+        if (version === generation.current) mergeJobs(incoming);
+      })
+      .catch((err: unknown) => {
+        if (version === generation.current)
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Processing interrupted. The queued job will be recovered automatically.",
+          );
+      })
+      .finally(() => {
+        processing.current = false;
+      });
+  }, [jobs, approvedUser, userId, blocked]);
+
+  async function sendUpload(item: Upload, version: number) {
+    function update(patch: Partial<Upload>) {
+      if (version === generation.current)
+        setUploads((current) =>
+          current.map((row) => (row.id === item.id ? { ...row, ...patch } : row)),
+        );
+    }
+    try {
+      const incoming = await uploadScan(item.file, item.id, (progress) => update({ progress }));
+      if (version !== generation.current) return;
+      mergeJobs(incoming);
+      setSelected(incoming[0]?.id ?? null);
+      update({ progress: 100, jobId: incoming[0]?.id ?? null, error: null });
     } catch (err: unknown) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Connection lost. Retry to retrieve your scan without a second charge.",
-      );
+      update({ error: err instanceof Error ? err.message : "Could not upload screenshot." });
+    }
+  }
+  async function selectFiles(list: FileList | null) {
+    if (!list || uploadingRef.current || blocked) return;
+    const files = Array.from(list);
+    if (!files.length) return;
+    if (files.length > MAX_SCAN_FILES) {
+      setError("Select up to 5 screenshots at a time.");
+      return;
+    }
+    if (!balance || approvedUser !== userId) {
+      setError("You need an available credit to upload.");
+      return;
+    }
+    const version = generation.current;
+    previewUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    previewUrls.current = [];
+    const next = files.map((file): Upload => {
+      const valid = isScanMediaType(file.type) && file.size > 0 && file.size <= MAX_SCAN_BYTES;
+      const preview = valid ? URL.createObjectURL(file) : "";
+      if (preview) previewUrls.current.push(preview);
+      return {
+        id: crypto.randomUUID(),
+        file,
+        preview,
+        progress: 0,
+        jobId: null,
+        error: valid ? null : "Use PNG, JPEG, or WebP, up to 3 MB per image.",
+      };
+    });
+    setUploads(next);
+    setError(null);
+    setUploading(true);
+    uploadingRef.current = true;
+    try {
+      for (const item of next) {
+        if (version !== generation.current) break;
+        if (!item.error) await sendUpload(item, version);
+      }
     } finally {
-      sending.current = false;
-      setBusy(false);
+      uploadingRef.current = false;
+      setUploading(false);
+    }
+  }
+  async function retryUpload(item: Upload) {
+    if (uploadingRef.current) return;
+    uploadingRef.current = true;
+    setUploading(true);
+    try {
+      await sendUpload(item, generation.current);
+    } finally {
+      uploadingRef.current = false;
+      setUploading(false);
+    }
+  }
+  async function loadOlder() {
+    const last = jobs[jobs.length - 1];
+    if (!last) return;
+    try {
+      const incoming = await scanRequest(
+        `?before=${encodeURIComponent(last.createdAt)}&beforeId=${encodeURIComponent(last.id)}`,
+      );
+      mergeJobs(incoming);
+      setOlder(incoming.length === 20);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Could not load history.");
     }
   }
 
-  if (isPending || !userId || approvedUser !== userId || blocked) {
+  if (isPending || !userId || approvedUser !== userId || blocked)
     return (
       <main className="grid min-h-dvh place-items-center bg-ink px-5 text-white">
         {blocked || error ? (
@@ -151,12 +265,11 @@ function VirtualScan() {
             </Link>
           </div>
         ) : (
-          <SignalLoading label="Checking payment approval" />
+          <SignalLoading label="Checking scanner access" />
         )}
       </main>
     );
-  }
-
+  const activeJob = jobs.find((job) => job.id === selected);
   return (
     <main className="virtual-shop">
       <div className="virtual-shop-shell">
@@ -173,155 +286,215 @@ function VirtualScan() {
         </nav>
         <header className="virtual-shop-heading">
           <p className="virtual-shop-eyebrow">
-            <span /> INSTANT VIRTUAL SCANNER
+            <span /> SPORTYBET INSTANT FOOTBALL SCANNER
           </p>
           <h1>
             Your screenshot.
             <br />
-            <span>A clearer view.</span>
+            <span>Visible evidence.</span>
           </h1>
           <p>
-            Upload your SportyBet Instant Virtual screen to read the visible match details and odds.
+            Upload SportyBet Instant Football screenshots in light or dark mode to compare
+            match-winner markets. Normal football screenshots are not supported. Scanning starts
+            automatically after upload.
           </p>
         </header>
         <div className="virtual-shop-wallet">
-          <span className="virtual-shop-wallet-icon">
-            <Coins size={23} aria-hidden />
-          </span>
+          <Coins size={26} className="text-red-400" aria-hidden />
           <div>
-            <span className="virtual-shop-label">AVAILABLE TO SCAN</span>
-            <strong>
-              {balance === null
-                ? "Checking credits..."
-                : `${balance} ${balance === 1 ? "credit" : "credits"}`}
-            </strong>
+            <span className="virtual-shop-label">YOUR SCAN CREDITS</span>
+            <strong>{balance} credits</strong>
           </div>
           <span className="virtual-shop-wallet-note">
-            1 credit per successful scan.
+            1 credit per readable screenshot.
             <br />
-            Failed scans are not charged.
+            Unusable or failed scans are not charged.
           </span>
         </div>
-        {balance === null && !error ? <SignalLoading label="Checking scan access" /> : null}
         {balance === 0 ? (
-          <div className="my-6 rounded-2xl border border-red-400/30 bg-red-500/10 p-5">
-            <h2 className="font-bold">Your next scan starts with a credit.</h2>
-            <p className="mt-2 text-sm text-white/70">
-              Buy a pack and wait for payment approval to unlock scanning.
-            </p>
-            <Link
-              to="/virtual-packages"
-              className="mt-3 inline-block font-bold text-red-300 underline"
-            >
+          <p className="scanner-notice mt-5">
+            No credits remaining.{" "}
+            <Link to="/virtual-packages" className="font-bold underline">
               Choose a credit pack
             </Link>
-          </div>
-        ) : null}
-        <div className="mt-8 grid items-start gap-6 md:grid-cols-2">
-          <section
-            className="rounded-3xl border border-white/15 bg-white/[0.03] p-5 sm:p-7"
-            aria-labelledby="upload-title"
-          >
-            <h2 id="upload-title" className="text-xl font-black">
-              01. Upload your screen
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-white/60">
-              Open Instant Virtual on SportyBet, take a clear screenshot, and crop out your name,
-              balance, phone number, and other personal details.
-            </p>
-            <div
-              className="mt-5 rounded-2xl border-2 border-dashed border-red-400/40 bg-black/30 p-5 text-center"
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={(event) => {
-                event.preventDefault();
-                selectFile(event.dataTransfer.files[0]);
-              }}
-            >
-              {preview ? (
-                <img
-                  src={preview}
-                  alt="Selected SportyBet screenshot"
-                  className="mx-auto max-h-80 max-w-full rounded-xl object-contain"
-                />
-              ) : (
-                <ImagePlus className="mx-auto my-5 size-12 text-red-400" aria-hidden />
-              )}
-              <label className="mt-4 block text-sm font-bold" htmlFor="sporty-screenshot">
-                Choose a screenshot or drop it here
-              </label>
-              <input
-                id="sporty-screenshot"
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                disabled={busy || blocked}
-                className="mt-3 block w-full min-w-0 text-xs text-white/65 file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-2 file:font-bold file:text-white"
-                onChange={(event) => {
-                  selectFile(event.target.files?.[0]);
-                  event.target.value = "";
-                }}
-              />
-              <p className="mt-3 text-xs text-white/45">PNG, JPEG, WebP / Up to 5 MB</p>
-              {file ? <p className="mt-2 break-all text-xs text-white/65">{file.name}</p> : null}
-            </div>
-            <button
-              type="button"
-              onClick={() => void scan()}
-              disabled={
-                !file || busy || blocked || balance === null || balance < 1 || result !== null
-              }
-              data-no-cursor-lift
-              className="no-button-attention mt-5 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-red-600 px-4 font-extrabold text-white hover:bg-red-500 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {busy ? (
-                <LoaderCircle className="size-5 animate-spin" aria-hidden />
-              ) : (
-                <ScanLine className="size-5" aria-hidden />
-              )}
-              {busy
-                ? "Reading your screenshot..."
-                : result
-                  ? "Scan complete - upload another"
-                  : "Scan screenshot / 1 credit"}
-            </button>
-          </section>
-          <section
-            className="rounded-3xl border border-white/15 bg-white/[0.03] p-5 sm:p-7"
-            aria-labelledby="analysis-title"
-            aria-busy={busy}
-          >
-            <h2 id="analysis-title" className="text-xl font-black">
-              02. Your scan results
-            </h2>
-            <div aria-live="polite" className="mt-5">
-              {result ? (
-                <p className="whitespace-pre-wrap break-words text-sm leading-7 text-white/85">
-                  {result.analysis}
-                </p>
-              ) : (
-                <div className="py-12 text-center text-white/50">
-                  <ScanLine className="mx-auto mb-4 size-10 text-red-400" aria-hidden />
-                  <p>
-                    {busy
-                      ? "Claude is reading the visible details. This may take up to a minute."
-                      : "Your screenshot analysis will appear here."}
-                  </p>
-                </div>
-              )}
-            </div>
-            <div className="mt-6 flex gap-3 rounded-xl border border-white/10 bg-black/30 p-4 text-xs leading-relaxed text-white/55">
-              <ShieldCheck className="size-5 shrink-0 text-red-400" aria-hidden />
-              <p>AI can misread screenshots. Check all details against SportyBet.</p>
-            </div>
-          </section>
-        </div>
-        {error ? (
-          <p
-            role="alert"
-            className="mt-5 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-200"
-          >
-            {error}
+            . Your history stays available.
           </p>
         ) : null}
+        <section className="scanner-panel mt-7" aria-labelledby="scanner-upload">
+          <h2 id="scanner-upload" className="text-xl font-black">
+            Upload screenshots
+          </h2>
+          <div
+            className="scanner-dropzone mt-4"
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              void selectFiles(event.dataTransfer.files);
+            }}
+          >
+            <ImagePlus className="mx-auto mb-3 size-10 text-red-400" aria-hidden />
+            <label htmlFor="sporty-screenshot" className="block font-bold">
+              Choose Instant Football screenshots or drop them here
+            </label>
+            <input
+              id="sporty-screenshot"
+              ref={fileInput}
+              type="file"
+              multiple
+              accept="image/png,image/jpeg,image/webp"
+              disabled={uploading || balance === 0}
+              className="mt-4 block w-full min-w-0 text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-2 file:font-bold file:text-white"
+              onChange={(event) => {
+                void selectFiles(event.target.files);
+                event.target.value = "";
+              }}
+            />
+            <p className="mt-3 text-xs text-white/55">
+              Up to 5 images / 3 MB each / static PNG, JPEG, WebP / 20 megapixels maximum
+            </p>
+          </div>
+          <p className="mt-4 text-xs leading-relaxed text-white/55">
+            Keep the Instant Football heading and 1X2 odds visible. Crop out personal details.
+            Uploading sends game screenshots to the AI provider. Encrypted images are kept
+            temporarily for processing, then removed; your private results are saved in history.
+            Readable fixtures can use a credit even if no winner selection qualifies.
+          </p>
+          {uploads.length ? (
+            <ul className="scanner-uploads mt-5" aria-live="polite">
+              {uploads.map((item) => {
+                const job = jobs.find((row) => row.id === item.jobId);
+                return (
+                  <li className="scanner-fixture" key={item.id}>
+                    {item.preview ? (
+                      <img
+                        src={item.preview}
+                        alt={`Preview: ${item.file.name}`}
+                        className="mb-3 h-32 w-full rounded-lg object-contain"
+                      />
+                    ) : null}
+                    <p className="break-all text-xs font-bold">{item.file.name}</p>
+                    <progress
+                      max="100"
+                      value={item.progress}
+                      className="mt-3 w-full accent-red-500"
+                      aria-label={`Upload progress for ${item.file.name}`}
+                    />
+                    <p className="mt-2 text-xs text-white/65">
+                      {job ? job.status.replace("_", " ") : `${item.progress}% uploaded`}
+                    </p>
+                    {item.error ? (
+                      <>
+                        <p role="alert" className="mt-2 text-xs text-red-300">
+                          {item.error}
+                        </p>
+                        {item.preview ? (
+                          <button
+                            disabled={uploading}
+                            type="button"
+                            className="mt-2 text-xs underline"
+                            onClick={() => void retryUpload(item)}
+                          >
+                            Retry same upload
+                          </button>
+                        ) : null}
+                      </>
+                    ) : null}
+                    {job ? (
+                      <button
+                        type="button"
+                        className="mt-2 text-xs font-bold text-red-300 underline"
+                        onClick={() => setSelected(job.id)}
+                      >
+                        View scan
+                      </button>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+          <button
+            type="button"
+            disabled={uploading || balance === 0}
+            data-no-cursor-lift
+            className="no-button-attention scanner-primary mt-5"
+            onClick={() => fileInput.current?.click()}
+          >
+            {uploading ? (
+              <LoaderCircle size={18} className="animate-spin" aria-hidden />
+            ) : (
+              <ImagePlus size={18} aria-hidden />
+            )}
+            {uploading ? "Uploading..." : "Scan another screenshot"}
+          </button>
+        </section>
+        {error ? (
+          <div role="alert" className="scanner-notice mt-5">
+            <p>{error}</p>
+            <button
+              type="button"
+              className="mt-2 underline"
+              onClick={() => {
+                setError(null);
+                window.location.reload();
+              }}
+            >
+              Refresh history
+            </button>
+          </div>
+        ) : null}
+        <div className="scanner-results-layout mt-7">
+          <section className="scanner-panel" aria-labelledby="scan-history">
+            <div className="scanner-section-heading">
+              <RefreshCw size={20} aria-hidden />
+              <h2 id="scan-history">Your scan history</h2>
+            </div>
+            <p className="mt-3 text-xs text-white/55">
+              Only your account can view these results. Queued scans continue if you leave.
+            </p>
+            {!jobs.length ? (
+              <p className="py-6 text-sm text-white/55">Your first scan will appear here.</p>
+            ) : (
+              <ul className="mt-4 grid gap-2">
+                {jobs.map((job) => (
+                  <li key={job.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelected(job.id)}
+                      aria-pressed={selected === job.id}
+                      className={`scanner-history-button ${selected === job.id ? "is-selected" : ""}`}
+                    >
+                      <span>{new Date(job.createdAt).toLocaleString()}</span>
+                      <span className="mt-1 flex items-center gap-2 text-xs text-white/60">
+                        {!isTerminal(job.status) ? (
+                          <LoaderCircle size={13} className="animate-spin" aria-hidden />
+                        ) : null}
+                        {job.status.replace("_", " ")} /{" "}
+                        {job.result?.extraction.fixtures.length ?? 0} fixtures
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {older ? (
+              <button
+                type="button"
+                className="mt-4 text-sm underline"
+                onClick={() => void loadOlder()}
+              >
+                Load older scans
+              </button>
+            ) : null}
+          </section>
+          {activeJob ? (
+            <ScanResults job={activeJob} />
+          ) : (
+            <div className="scanner-panel grid min-h-52 place-items-center text-sm text-white/55">
+              Upload or select a scan to see your results.
+            </div>
+          )}
+        </div>
       </div>
     </main>
   );

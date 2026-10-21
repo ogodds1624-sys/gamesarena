@@ -1,5 +1,6 @@
 {
   "installCommand": "npm install --omit=dev --no-audit --no-fund",
+  "crons": [{ "path": "/api/scan-worker", "schedule": "* * * * *" }],
   "headers": [
     {
       "source": "/fonts/(.*)",

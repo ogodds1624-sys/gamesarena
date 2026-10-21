@@ -1776,13 +1776,31 @@
 
 .predictor-content {
   position: relative;
-  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 1.5rem 1.25rem;
+  text-align: center;
+}
+
+.predictor-card > .iphone-stage {
+  min-height: 0;
+  padding-block: 1.5rem;
+}
+
+.predictor-content > .predictor-cta {
+  max-width: 22rem;
+}
+
+.predictor-content .predictor-highlights {
+  justify-content: center;
 }
 
 .predictor-heading-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 1rem;
 }
 
@@ -3849,6 +3867,141 @@ body.site-front .buy-pulse.press-hold {
   }
   .virtual-shop-footer {
     text-align: left;
+  }
+}
+
+.scanner-panel {
+  min-width: 0;
+  border: 1px solid #ffffff1f;
+  border-radius: 24px;
+  background: #ffffff07;
+  padding: clamp(18px, 3vw, 28px);
+}
+.scanner-section-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: #ff5264;
+}
+.scanner-section-heading h2 {
+  color: white;
+  font-size: 19px;
+  font-weight: 850;
+}
+.scanner-dropzone {
+  border: 2px dashed #ff526466;
+  border-radius: 18px;
+  padding: 24px 18px;
+  text-align: center;
+  background: #0005;
+}
+.scanner-notice {
+  border: 1px solid #ff526433;
+  border-radius: 14px;
+  padding: 16px;
+  background: #ff52640a;
+  color: #e6cbd1;
+  font-size: 13px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.scanner-fixture {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid #ffffff17;
+  border-radius: 16px;
+  background: #0004;
+  overflow-wrap: anywhere;
+}
+.scanner-uploads {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 12px;
+}
+.scanner-results-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.7fr);
+  align-items: start;
+  gap: 20px;
+}
+.scanner-history-button {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #ffffff17;
+  border-radius: 12px;
+  text-align: left;
+  font-size: 13px;
+  color: white;
+}
+.scanner-history-button.is-selected,
+.scanner-history-button:hover {
+  border-color: #ff526477;
+  background: #ff526410;
+}
+.scanner-facts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+  gap: 8px 14px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.scanner-facts dt {
+  color: #a79fae;
+}
+.scanner-facts dd {
+  overflow-wrap: anywhere;
+}
+.scanner-odds {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.scanner-odds > div {
+  border: 1px solid #ffffff17;
+  border-radius: 10px;
+  padding: 10px;
+}
+.scanner-odds span,
+.scanner-odds strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.scanner-odds span {
+  color: #aaa;
+  font-size: 11px;
+  margin-bottom: 5px;
+}
+.scanner-odds strong {
+  font-size: 13px;
+}
+.scanner-tag {
+  font-size: 11px;
+  text-transform: uppercase;
+}
+.scanner-primary {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 14px;
+  background: #dc162b;
+  padding: 12px 20px;
+  color: white;
+  font-weight: 800;
+}
+.scanner-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.scanner-panel button:focus-visible {
+  outline: 2px solid #ff5264;
+  outline-offset: 4px;
+}
+@media (max-width: 760px) {
+  .scanner-results-layout {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

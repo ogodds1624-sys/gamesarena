@@ -256,14 +256,7 @@ function Home() {
                     Aviator <span>Predictor</span>
                   </h3>
                 </div>
-                <span className="predictor-plane-mark" aria-hidden="true">
-                  <Plane className="size-5" />
-                </span>
               </div>
-              <p className="predictor-description">
-                Explore live predictions, track the suggested multiplier, and choose your cash-out
-                moment.
-              </p>
               <div className="predictor-highlights" aria-label="Predictor features">
                 <span>
                   <Radio className="size-3.5" aria-hidden /> Signal updates
@@ -275,7 +268,9 @@ function Home() {
               <button
                 type="button"
                 onClick={() => void openAccount()}
-                className="predictor-cta buy-pulse mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-gold text-base font-extrabold tracking-wide text-black"
+                disabled={isPending || blocked}
+                data-no-cursor-lift
+                className="predictor-cta no-button-attention mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-gold text-base font-extrabold tracking-wide text-black disabled:opacity-50"
               >
                 <span>Open Predictor</span>
                 <ArrowRight className="size-4" aria-hidden />

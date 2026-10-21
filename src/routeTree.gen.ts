@@ -28,6 +28,7 @@ import { Route as VirtualPayRouteImport } from './routes/virtual-pay'
 import { Route as VirtualScanRouteImport } from './routes/virtual-scan'
 import { Route as ApiDeskPassRouteImport } from './routes/api/desk-pass'
 import { Route as ApiScanImageRouteImport } from './routes/api/scan-image'
+import { Route as ApiScanWorkerRouteImport } from './routes/api/scan-worker'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -125,6 +126,11 @@ const ApiScanImageRoute = ApiScanImageRouteImport.update({
   path: '/api/scan-image',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiScanWorkerRoute = ApiScanWorkerRouteImport.update({
+  id: '/api/scan-worker',
+  path: '/api/scan-worker',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -151,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/virtual-scan': typeof VirtualScanRoute
   '/api/desk-pass': typeof ApiDeskPassRoute
   '/api/scan-image': typeof ApiScanImageRoute
+  '/api/scan-worker': typeof ApiScanWorkerRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
@@ -173,6 +180,7 @@ export interface FileRoutesByTo {
   '/virtual-scan': typeof VirtualScanRoute
   '/api/desk-pass': typeof ApiDeskPassRoute
   '/api/scan-image': typeof ApiScanImageRoute
+  '/api/scan-worker': typeof ApiScanWorkerRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
@@ -196,6 +204,7 @@ export interface FileRoutesById {
   '/virtual-scan': typeof VirtualScanRoute
   '/api/desk-pass': typeof ApiDeskPassRoute
   '/api/scan-image': typeof ApiScanImageRoute
+  '/api/scan-worker': typeof ApiScanWorkerRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
@@ -220,6 +229,7 @@ export interface FileRouteTypes {
     | '/virtual-scan'
     | '/api/desk-pass'
     | '/api/scan-image'
+    | '/api/scan-worker'
     | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -242,6 +252,7 @@ export interface FileRouteTypes {
     | '/virtual-scan'
     | '/api/desk-pass'
     | '/api/scan-image'
+    | '/api/scan-worker'
     | '/api/auth/$'
   id:
     | '__root__'
@@ -264,6 +275,7 @@ export interface FileRouteTypes {
     | '/virtual-scan'
     | '/api/desk-pass'
     | '/api/scan-image'
+    | '/api/scan-worker'
     | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
@@ -287,6 +299,7 @@ export interface RootRouteChildren {
   VirtualScanRoute: typeof VirtualScanRoute
   ApiDeskPassRoute: typeof ApiDeskPassRoute
   ApiScanImageRoute: typeof ApiScanImageRoute
+  ApiScanWorkerRoute: typeof ApiScanWorkerRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -425,6 +438,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiScanImageRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/scan-worker': {
+      id: '/api/scan-worker'
+      path: '/api/scan-worker'
+      fullPath: '/api/scan-worker'
+      preLoaderRoute: typeof ApiScanWorkerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -455,6 +475,7 @@ const rootRouteChildren: RootRouteChildren = {
   VirtualScanRoute: VirtualScanRoute,
   ApiDeskPassRoute: ApiDeskPassRoute,
   ApiScanImageRoute: ApiScanImageRoute,
+  ApiScanWorkerRoute: ApiScanWorkerRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

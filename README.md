@@ -35,50 +35,154 @@ opens the Instant Virtual scanner when credits are available.
 
 ## Instant Virtual screenshot scanning
 
-Approved Instant Virtual payments now open `/virtual-scan`. Users select or
-drop a PNG, JPEG, or WebP screenshot (maximum 5 MB), preview it, and submit it
-to Anthropic for visible-match/odds transcription.
-This is not a game-outcome predictor. Personal details should be cropped out
-before uploading. Images are not stored by Games Hub; result text is stored in
-`virtual_scans` for idempotent retries. Anthropic's own data policies also apply.
+Approved Instant Virtual users open `/virtual-scan`, select or drop up to **five
+PNG, JPEG, or WebP screenshots, each at most 3 MB**, and scanning starts
+automatically. The mobile file picker supports the device gallery. Each upload
+has a real transfer-progress indicator; processing has separate queued/scanning
+states. Results and private history appear on the same page without contacting
+an administrator. No Telegram bot or admin-only scanner is involved.
 
 The scanner UI stays hidden until the server verifies a confirmed Instant
 Virtual payment for the signed-in account. Direct visits without approval go
 back to the pending payment's confirmation checkout, or to credit packages when
 there is no pending payment. Aviator payments do not unlock the scanner.
 
-The existing TanStack Start backend handles `POST /api/scan-image`; no separate
-Express server is needed. The official `@anthropic-ai/sdk` is a server-only
-dependency. Run `npm install` after pulling these changes, apply migrations with
-`npm run db:migrate` on a configured Postgres database, and restart the server.
-Embedded local PGlite applies migrations automatically.
+The existing React/TanStack Start UI, Better Auth authentication, Neon
+PostgreSQL database and red/black/white theme are retained. The server-only
+official `@anthropic-ai/sdk` performs real vision requests; **sharp** is the
+only new direct dependency, used for actual image decoding, static-image
+validation, metadata removal and normalization. Animated images, corrupt files,
+images below 100 x 100 or above 20 megapixels, and normalized PNGs exceeding
+4 MB are rejected. Screenshots are resized to at most 2400 x 2400; crop long
+screenshots into readable sections instead of uploading tiny text.
 
 Configure these **server environment variables** (never `VITE_` variables):
 
 ```dotenv
 ANTHROPIC_API_KEY=your-private-anthropic-key
 ANTHROPIC_MODEL=claude-sonnet-5-5
+SCAN_IMAGE_ENCRYPTION_KEY=<64 random hexadecimal characters>
+CRON_SECRET=<random secret of at least 32 characters>
 ```
 
-Use a currently available vision model from your Anthropic account; the model
-is configurable to avoid dependence on retired IDs such as Claude 3.5 Sonnet.
-Set the variables in your deployment environment or local server environment.
-Do not put a key into browser code, commit it, or send it in chat.
-Without a key the endpoint returns an explicit setup error and uses no credits.
+Also retain the existing `DATABASE_URL` (Neon), authentication and admin
+environment variables. Keep all these values server-side, never `VITE_`
+variables. Generate independent random secrets privately; do not commit keys or
+send them in chat. Use a vision model enabled for your Anthropic account; the
+model ID is configurable. Without the API or encryption key, uploads fail
+explicitly without spending credits. Keep the encryption key stable while jobs
+are pending; rotating it makes their ciphertext unreadable.
 
-The endpoint requires a same-origin request, an authenticated non-blocked Ghana or Nigeria
-account, completed connection, an approved virtual-credit payment, and an
-available credit. It validates image signatures and bounds the streamed request
-body. Only one scan may run per user, with 20 attempts per hour. Provider calls
-time out after 60 seconds and are not automatically retried.
+### Visible extraction and qualified rankings
 
-`0013_virtual_scans.sql` saves successful analysis and deducts **one credit
-atomically**, only after usable results are returned. Failed/unreadable images
-use no credit. A browser-generated request UUID ties retries to the same image
-hash and saved result, preventing duplicate charges. A lost response can be
-retried using the same selection; after a definite failed scan, select the
-image again to create a new request. Abandoned scans expire after two minutes.
-The homepage no longer spends credits on decorative random reels.
+New scans accept **SportyBet Instant Football only**, in either light or dark
+mode. The vision model must identify the visible Instant Football heading and
+supporting interface evidence (such as league tabs, 1X2 markets, star-rated
+team rows and Next Round). A SportyBet logo alone, familiar clubs, colours or
+ordinary football odds are not sufficient. Keep the heading visible when cropping.
+Normal football returns **"This is not an Instant Football prediction"**;
+other products or unclear identity request the correct screenshot. These results
+have no rankings and use no credit, even if the model also returns readable teams.
+Identification is AI-based, not a guarantee of screenshot authenticity.
+Previously saved reports without identification still load, but their rankings
+are hidden because the source cannot be confirmed under the new restriction.
+
+The model returns strict validated JSON containing visible provider/sport, teams,
+match IDs, market, decimal home/draw/away odds, time/countdown, status and
+label/value statistics. Missing scalar values remain null; unreadable fields,
+partial images and ambiguous fixtures are flagged. Image text is untrusted
+evidence, not instructions. Multiple fixtures are supported (up to 30 per image).
+Invalid or truncated model output is rejected rather than repaired with guesses.
+Visible team abbreviations are kept unchanged. A selectable Instant Football
+round with a Next Round control can establish upcoming-round status without
+inventing a kickoff time. Neither light nor dark theme changes ranking rules.
+
+Rankings are **displayed market favourites, not reliable outcome predictions**.
+Only visibly upcoming, clearly identified winner markets with distinct readable
+participants, complete applicable odds and no flagged uncertain fields qualify.
+Two-way markets cannot contain a draw price. The lowest odds must be at least
+0.05 below the next option. One favourite per eligible fixture is ranked by
+ascending displayed odds; reasons and exclusions accompany the evidence. No
+historical prediction dataset is connected, and no winning probabilities,
+invented statistics or guarantees are produced. Unclear screenshots or missing
+odds may therefore produce no qualified selection.
+
+### Durable jobs, privacy and billing
+
+- `POST /api/scan-image` validates same-origin authenticated uploads, streams at
+  most 3 MB, decodes the actual image, removes metadata, hashes the normalized
+  content and queues a job. Headers: image `Content-Type` and UUIDv4 `X-Scan-Id`.
+- `POST /api/scan-image?action=process&id=<uuid>` awaits the owner-bound foreground
+  processor. `GET /api/scan-image` returns the newest 20 private jobs;
+  `?id=<uuid>` retrieves only the owner's job. Older history uses both
+  `before=<createdAt>` and `beforeId=<uuid>` to handle timestamp ties.
+- Migration `0015_structured_scan_jobs.sql` adds encrypted image payloads, jobs,
+  extraction/ranking reports, indexes, upload throttling and atomic queue/credit
+  functions. Legacy `virtual_scans` records are retained unchanged, but the new
+  structured history lists new jobs only.
+- AES-256-GCM encrypted image bytes are temporarily stored in Neon. No public
+  image URL or permanent upload storage is created. Images are decrypted only
+  server-side for the model request and removed from the live job on completion,
+  unreadable results or terminal failure. Jobs expire after 30 minutes; the next
+  worker, authenticated scanner request or claim removes expired ciphertext.
+  This is not instantaneous erasure from database backups or provider systems.
+- Crop account details before uploading. The full normalized image is sent to
+  Anthropic; its data/retention policies apply. Transcribed scan reports remain
+  in the user's private database history. Images and credentials are not logged.
+- Existing activation approval, confirmed Instant Virtual payment, supported
+  country, SportyBet linking, block checks and credits remain required. Access is
+  rechecked before processing and before committing a charge.
+- Pending jobs reserve available credit slots without deducting money. At most
+  five jobs may be pending per user, 20 new jobs per rolling hour, and 40 upload
+  requests per fixed hour (including invalid/retried uploads). Limits live in
+  PostgreSQL rather than process memory.
+- **One credit per screenshot is deducted atomically only when a usable match
+  extraction is saved**: readable home/away names and market in clear/partial
+  evidence. A readable extraction still costs one credit if no ranking qualifies.
+  Unreadable/unrelated images and failures cost nothing.
+- Request UUIDs and per-user normalized-image hashes deduplicate pending and
+  successful jobs, preventing double charges after lost responses or repeated
+  uploads. Use **Retry upload** with the same ID after a connection failure;
+  select the file again after a terminal failure. A completed duplicate opens
+  its previous report, not a fresh paid inference.
+
+### Vercel setup and verification
+
+1. Run `npm install`, configure the environment above in Vercel and run
+   `npm run db:migrate` against the existing Neon database. `npm run build`
+   compiles production assets and runs the migrator; it skips remote migrations
+   if `DATABASE_URL` is absent. Local embedded PGlite migrates itself but is
+   in-memory and is not a production persistence substitute.
+2. Deploy the existing project. Nitro's generated Vercel function uses a
+   **90-second maxDuration**; the AI request has a 55-second timeout and no SDK
+   retries. Verify your Vercel plan permits this duration.
+3. `vercel.json` schedules `GET /api/scan-worker` every minute. **Use a Vercel
+   plan supporting per-minute cron (normally Pro or higher)** or an equivalent
+   authenticated external scheduler. Vercel sends `Authorization: Bearer
+<CRON_SECRET>`. Never expose the worker secret to the browser. Cron runs on
+   production deployments; preview/local environments need foreground processing
+   or a scheduler invoking that protected endpoint.
+4. Workers await at most three claimed jobs concurrently, using PostgreSQL
+   `FOR UPDATE SKIP LOCKED`, 100-second leases and at most three attempts.
+   Transient rate-limit/connection/server failures retry after 15 seconds;
+   interrupted invocations are reclaimed after the lease expires. No work relies
+   on an unawaited promise after a server response. A working scheduler is required
+   for recovery and cleanup while all user tabs are closed.
+5. Run `npm run typecheck`, the targeted scanner/access tests below and
+   `npm run build`. In a configured deployment, sign in as an approved user,
+   upload two real screenshots, verify literal fixture/odds transcription and
+   one charge per usable image, refresh history, repeat the same upload and
+   verify no second charge. Try a blurry image and a second account's scan ID;
+   check no-charge handling and private access denial. Close the page mid-scan
+   and verify cron completes or safely expires the job.
+
+```sh
+node --experimental-strip-types --test src/lib/image-scan.test.ts src/lib/virtual-credits.test.ts src/lib/activation.test.ts src/lib/pricing.test.ts
+```
+
+Tests use the real SDK with mocked provider transport plus real image decoding,
+encryption and PGlite queue functions; they do not verify a live API key, live
+model accuracy, actual Neon credentials or a deployed cron scheduler.
 
 ## Admin pricing and package duration
 
