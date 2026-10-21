@@ -209,6 +209,18 @@ Authentication failures also record boolean transport checks: header presence,
 whether it matches the configured key, key format, expected endpoint and redirects.
 These checks never log header or key values.
 
+For a controlled production authentication comparison, an activated user with an
+approved Instant Virtual package can POST to
+`/api/scan-image?action=check-auth` from the same origin. It makes two minimal
+Chat Completions requests to `https://api.openai.com/v1/chat/completions`: one
+through the scanner SDK client and one through native Node HTTPS with the same
+server-side key. It uses the existing upload-request rate limit and does not
+change scan credits or history. Successful provider requests can incur small
+OpenAI usage charges. The response exposes only key presence, provider HTTP
+statuses, validated request IDs and sanitized error categories, never credentials
+or completion contents. HTTP 200 from this diagnostic route is not proof of
+provider success: inspect each transport's nested `status`.
+
 ## Admin pricing and package duration
 
 Open **Admin > Pricing & Packages** to edit the price and session minutes for each
