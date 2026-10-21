@@ -1,11 +1,12 @@
 import { ScanLine } from "lucide-react";
 import { screenshotRejection, type ScanJob } from "@/lib/image-scan";
+import { ScanActivity } from "@/components/scan-activity";
 
 function shown(value: string | number | null) {
   return value === null ? "Not visible / unreadable" : String(value);
 }
 
-export function ScanResults({ job }: { job: ScanJob }) {
+export function ScanResults({ job, working = false }: { job: ScanJob; working?: boolean }) {
   const report = job.result;
   const rejection = report ? screenshotRejection(report.extraction) : null;
   return (
@@ -25,11 +26,13 @@ export function ScanResults({ job }: { job: ScanJob }) {
         </p>
       ) : null}
       {!report ? (
-        <p role="status" className="py-8 text-sm text-white/60">
-          {job.status === "failed"
-            ? "Try another clear screenshot."
-            : "Your screenshot is queued or being read. You can return to your history later."}
-        </p>
+        job.status === "failed" ? (
+          <p role="status" className="py-8 text-sm text-white/60">
+            Try another clear screenshot.
+          </p>
+        ) : (
+          <ScanActivity scanning={working || job.status === "processing"} />
+        )
       ) : rejection ? (
         <p role="alert" className="scanner-notice mt-4">
           {rejection} {!job.charged ? "No credit was used." : ""}

@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Coins, ImagePlus, LoaderCircle, RefreshCw } from "lucide-react";
+import {
+  ArrowLeft,
+  Coins,
+  ImagePlus,
+  LoaderCircle,
+  RefreshCw,
+  ScanLine,
+  ShieldCheck,
+  CheckCircle2,
+} from "lucide-react";
 import { getSportyLink, getVirtualCreditBalance, getVirtualScanAccess } from "@/lib/admin-snapshot";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { useBlocked } from "@/lib/blocked-users";
@@ -43,6 +52,7 @@ function VirtualScan() {
   const [older, setOlder] = useState(false);
   const uploadingRef = useRef(false);
   const processing = useRef(false);
+  const [processingJobId, setProcessingJobId] = useState<string | null>(null);
   const nextProcessAt = useRef(0);
   const previewUrls = useRef<string[]>([]);
   const generation = useRef(0);
@@ -53,6 +63,7 @@ function VirtualScan() {
     const version = ++generation.current;
     setApprovedUser(null);
     setJobs([]);
+    setProcessingJobId(null);
     setUploads([]);
     previewUrls.current.forEach((url) => URL.revokeObjectURL(url));
     previewUrls.current = [];
@@ -152,6 +163,7 @@ function VirtualScan() {
     if (!job) return;
     const version = generation.current;
     processing.current = true;
+    setProcessingJobId(job.id);
     nextProcessAt.current = Date.now() + 5000;
     void scanRequest(`?action=process&id=${encodeURIComponent(job.id)}`, true)
       .then((incoming) => {
@@ -167,6 +179,7 @@ function VirtualScan() {
       })
       .finally(() => {
         processing.current = false;
+        if (version === generation.current) setProcessingJobId(null);
       });
   }, [jobs, approvedUser, userId, blocked]);
 
@@ -271,7 +284,7 @@ function VirtualScan() {
     );
   const activeJob = jobs.find((job) => job.id === selected);
   return (
-    <main className="virtual-shop">
+    <main className="virtual-shop scanner-page">
       <div className="virtual-shop-shell">
         <nav className="virtual-shop-nav" aria-label="Page navigation">
           <Link to="/" className="virtual-shop-back">
@@ -284,20 +297,28 @@ function VirtualScan() {
             Get credits
           </Link>
         </nav>
-        <header className="virtual-shop-heading">
+        <header className="virtual-shop-heading scanner-hero">
           <p className="virtual-shop-eyebrow">
             <span /> SPORTYBET INSTANT FOOTBALL SCANNER
           </p>
           <h1>
-            Your screenshot.
+            Your game.
             <br />
-            <span>Visible evidence.</span>
+            <span>A clearer view.</span>
           </h1>
           <p>
             Upload SportyBet Instant Football screenshots in light or dark mode to compare
             match-winner markets. Normal football screenshots are not supported. Scanning starts
             automatically after upload.
           </p>
+          <div className="scanner-hero-badges">
+            <span>
+              <ScanLine size={14} aria-hidden /> Instant Football only
+            </span>
+            <span>
+              <ShieldCheck size={14} aria-hidden /> Private scan history
+            </span>
+          </div>
         </header>
         <div className="virtual-shop-wallet">
           <Coins size={26} className="text-red-400" aria-hidden />
@@ -321,9 +342,16 @@ function VirtualScan() {
           </p>
         ) : null}
         <section className="scanner-panel mt-7" aria-labelledby="scanner-upload">
-          <h2 id="scanner-upload" className="text-xl font-black">
-            Upload screenshots
-          </h2>
+          <div className="scanner-upload-heading">
+            <span className="scanner-step-number">01</span>
+            <div>
+              <h2 id="scanner-upload" className="text-xl font-black">
+                Upload screenshots
+              </h2>
+              <p>Choose your images. We take it from here.</p>
+            </div>
+            <span className="scanner-auto-tag">AUTO SCAN</span>
+          </div>
           <div
             className="scanner-dropzone mt-4"
             onDragOver={(event) => event.preventDefault()}
@@ -332,7 +360,9 @@ function VirtualScan() {
               void selectFiles(event.dataTransfer.files);
             }}
           >
-            <ImagePlus className="mx-auto mb-3 size-10 text-red-400" aria-hidden />
+            <div className="scanner-upload-icon">
+              <ImagePlus size={30} aria-hidden />
+            </div>
             <label htmlFor="sporty-screenshot" className="block font-bold">
               Choose Instant Football screenshots or drop them here
             </label>
@@ -343,12 +373,22 @@ function VirtualScan() {
               multiple
               accept="image/png,image/jpeg,image/webp"
               disabled={uploading || balance === 0}
-              className="mt-4 block w-full min-w-0 text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-2 file:font-bold file:text-white"
+              className="scanner-file-input"
               onChange={(event) => {
                 void selectFiles(event.target.files);
                 event.target.value = "";
               }}
             />
+            <button
+              type="button"
+              className="scanner-primary no-button-attention mt-5"
+              data-no-cursor-lift
+              disabled={uploading || balance === 0}
+              onClick={() => fileInput.current?.click()}
+            >
+              <ImagePlus size={18} aria-hidden />{" "}
+              {uploading ? "Uploading images..." : "Choose screenshots"}
+            </button>
             <p className="mt-3 text-xs text-white/55">
               Up to 5 images / 3 MB each / static PNG, JPEG, WebP / 20 megapixels maximum
             </p>
@@ -363,14 +403,29 @@ function VirtualScan() {
             <ul className="scanner-uploads mt-5" aria-live="polite">
               {uploads.map((item) => {
                 const job = jobs.find((row) => row.id === item.jobId);
+                const scanning =
+                  !!job &&
+                  !isTerminal(job.status) &&
+                  (job.status === "processing" || processingJobId === job.id);
                 return (
-                  <li className="scanner-fixture" key={item.id}>
+                  <li
+                    className={`scanner-fixture scanner-upload-card ${scanning ? "is-scanning" : ""}`}
+                    key={item.id}
+                  >
                     {item.preview ? (
-                      <img
-                        src={item.preview}
-                        alt={`Preview: ${item.file.name}`}
-                        className="mb-3 h-32 w-full rounded-lg object-contain"
-                      />
+                      <div className="scanner-image-stage">
+                        <img
+                          src={item.preview}
+                          alt={`Preview: ${item.file.name}`}
+                          className="h-44 w-full object-contain"
+                        />
+                        {scanning ? <div className="scanner-beam" aria-hidden /> : null}
+                        {job?.status === "completed" ? (
+                          <span className="scanner-image-complete">
+                            <CheckCircle2 size={16} aria-hidden /> Complete
+                          </span>
+                        ) : null}
+                      </div>
                     ) : null}
                     <p className="break-all text-xs font-bold">{item.file.name}</p>
                     <progress
@@ -379,8 +434,17 @@ function VirtualScan() {
                       className="mt-3 w-full accent-red-500"
                       aria-label={`Upload progress for ${item.file.name}`}
                     />
-                    <p className="mt-2 text-xs text-white/65">
-                      {job ? job.status.replace("_", " ") : `${item.progress}% uploaded`}
+                    <p className="scanner-upload-status">
+                      {scanning ? (
+                        <LoaderCircle size={13} className="animate-spin" aria-hidden />
+                      ) : null}
+                      {scanning
+                        ? "Analyzing screenshot..."
+                        : job
+                          ? job.status.replace("_", " ")
+                          : item.progress === 100 && !item.error
+                            ? "Upload sent. Validating image..."
+                            : `${item.progress}% uploaded`}
                     </p>
                     {item.error ? (
                       <>
@@ -488,7 +552,10 @@ function VirtualScan() {
             ) : null}
           </section>
           {activeJob ? (
-            <ScanResults job={activeJob} />
+            <ScanResults
+              job={activeJob}
+              working={processingJobId === activeJob.id && !isTerminal(activeJob.status)}
+            />
           ) : (
             <div className="scanner-panel grid min-h-52 place-items-center text-sm text-white/55">
               Upload or select a scan to see your results.
