@@ -13,6 +13,11 @@ export function scanErrorDiagnostics(error: unknown) {
   if (typeof error !== "object" || error === null) return {};
   const codes = [
     "missing_api_key",
+    "missing_authorization",
+    "invalid_authentication",
+    "authentication_required",
+    "missing_bearer_token",
+    "invalid_bearer_token",
     "invalid_api_key",
     "invalid_organization",
     "organization_deactivated",
