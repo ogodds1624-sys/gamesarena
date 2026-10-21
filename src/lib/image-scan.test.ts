@@ -51,11 +51,12 @@ test("provider diagnostics expose only allowlisted codes and validated request I
     scanErrorDiagnostics({
       code: "invalid_api_key",
       type: "invalid_request_error",
-      request_id: "req_test123",
+      requestID: "req_test123",
       message: "secret credential or screenshot contents",
       headers: { authorization: "private" },
     }),
     {
+      authenticationReason: "unclassified",
       providerCode: "invalid_api_key",
       providerType: "invalid_request_error",
       providerRequestId: "req_test123",
@@ -64,14 +65,32 @@ test("provider diagnostics expose only allowlisted codes and validated request I
   const unsafe = scanErrorDiagnostics({
     code: "sk-private-value",
     type: "private-image-text",
-    request_id: "secret",
+    requestID: "secret",
   });
   assert.deepEqual(unsafe, {
+    authenticationReason: "unclassified",
     providerCode: "unrecognized",
     providerType: "unrecognized",
     providerRequestId: undefined,
   });
   assert.deepEqual(scanErrorDiagnostics(null), {});
+  const sdkError = new OpenAI.AuthenticationError(
+    401,
+    {
+      code: "invalid_api_key",
+      type: "invalid_request_error",
+      message: "Incorrect API key provided: sk-private-value",
+    },
+    undefined,
+    new Headers({ "x-request-id": "req_realSDK123" }),
+  );
+  assert.deepEqual(scanErrorDiagnostics(sdkError), {
+    authenticationReason: "invalid_key",
+    providerCode: "invalid_api_key",
+    providerType: "invalid_request_error",
+    providerRequestId: "req_realSDK123",
+  });
+  assert.ok(!JSON.stringify(scanErrorDiagnostics(sdkError)).includes("sk-private-value"));
 });
 function extraction(fixtures = [fixture()]): Extraction {
   return {

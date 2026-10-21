@@ -201,7 +201,8 @@ encryption and PGlite queue functions; they do not verify a live API key, live
 model accuracy, actual Neon credentials or a deployed cron scheduler.
 
 Scanner failure logs include HTTP status, allowlisted OpenAI error code/type and
-a format-validated OpenAI request ID for authentication troubleshooting. Unknown
+a format-validated OpenAI request ID and a fixed authentication-reason category
+for troubleshooting. Unknown
 codes/types are replaced with `unrecognized`; raw provider messages, credentials,
 headers and screenshots are never logged.
 

@@ -33,8 +33,27 @@ export function scanErrorDiagnostics(error: unknown) {
   ];
   const code = "code" in error ? error.code : undefined;
   const type = "type" in error ? error.type : undefined;
-  const requestId = "request_id" in error ? error.request_id : undefined;
+  const requestId = "requestID" in error ? error.requestID : undefined;
+  const message = "message" in error && typeof error.message === "string" ? error.message : "";
+  const authenticationReason = /incorrect api key|invalid api key|invalid_api_key/i.test(message)
+    ? "invalid_key"
+    : /didn.t provide an api key|missing.*authentication|missing.*api key/i.test(message)
+      ? "missing_key"
+      : /revoked/i.test(message)
+        ? "revoked_credential"
+        : /deactivated|suspended/i.test(message)
+          ? "account_disabled"
+          : /organization|organisation/i.test(message)
+            ? "organization_restriction"
+            : /ip address|ip allowlist|ip whitelist/i.test(message)
+              ? "ip_restriction"
+              : /country|region|territory/i.test(message)
+                ? "region_restriction"
+                : /issuer|token.*expired|expired.*token/i.test(message)
+                  ? "token_rejected"
+                  : "unclassified";
   return {
+    authenticationReason,
     providerCode:
       typeof code === "string" ? (codes.includes(code) ? code : "unrecognized") : undefined,
     providerType:
