@@ -156,6 +156,12 @@ odds may therefore produce no qualified selection.
 
 ### Vercel setup and verification
 
+Vercel uses `npm ci --include=dev` so build-time checks can run ESLint and
+TypeScript from the lockfile. Do not override the install command with
+`--omit=dev`: ESLint is a development dependency, and omitting it causes
+`eslint: command not found` (exit code 127). Installing the tool does not bypass
+lint findings; diagnose any subsequent nonzero lint exit from its actual output.
+
 1. Run `npm install`, configure the environment above in Vercel and run
    `npm run db:migrate` against the existing Neon database. `npm run build`
    compiles production assets and runs the migrator; it skips remote migrations

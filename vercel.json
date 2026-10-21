@@ -1,5 +1,5 @@
 {
-  "installCommand": "npm install --omit=dev --no-audit --no-fund",
+  "installCommand": "npm ci --include=dev --no-audit --no-fund",
   "crons": [{ "path": "/api/scan-worker", "schedule": "* * * * *" }],
   "headers": [
     {
