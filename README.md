@@ -205,6 +205,9 @@ a format-validated OpenAI request ID and a fixed authentication-reason category
 for troubleshooting. Unknown
 codes/types are replaced with `unrecognized`; raw provider messages, credentials,
 headers and screenshots are never logged.
+Authentication failures also record boolean transport checks: header presence,
+whether it matches the configured key, key format, expected endpoint and redirects.
+These checks never log header or key values.
 
 ## Admin pricing and package duration
 

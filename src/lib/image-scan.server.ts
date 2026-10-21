@@ -1,11 +1,10 @@
-import OpenAI from "openai";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { getSessionUser } from "@/lib/auth/verify.server";
 import { getSportyLink, getVirtualScanAccess } from "@/lib/admin-snapshot";
 import { getSql } from "@/lib/db";
 import { env } from "@/lib/env.server";
 import { isScanMediaType, matchesScanSignature, MAX_SCAN_BYTES } from "./image-scan";
-import { analyzeScreenshot } from "./scan-analysis.server";
+import { analyzeScreenshot, createScanClient } from "./scan-analysis.server";
 import { encryptScanImage, normalizeScanImage, scanEncryptionKey } from "./scan-image-codec.server";
 import { processScanJob, readScanJobs } from "./scan-jobs.server";
 
@@ -65,7 +64,7 @@ export async function scanImage(request: Request): Promise<Response> {
     if (!uuid.test(id)) return scanReply({ error: "Invalid scan ID." }, 400);
     const owned = await readScanJobs(sql, user.id, id);
     if (!owned.length) return scanReply({ error: "Scan not found." }, 404);
-    const client = new OpenAI({ apiKey, timeout: 55_000, maxRetries: 0 });
+    const client = createScanClient(apiKey);
     await processScanJob(
       sql,
       key,
@@ -167,7 +166,7 @@ export async function runScanWorker(request: Request) {
   const key = scanEncryptionKey(env("SCAN_IMAGE_ENCRYPTION_KEY"));
   const apiKey = env("OPENAI_API_KEY");
   if (!apiKey) return scanReply({ error: "AI scanner is not configured." }, 503);
-  const client = new OpenAI({ apiKey, timeout: 55_000, maxRetries: 0 });
+  const client = createScanClient(apiKey);
   // Every provider call and DB update is awaited before the invocation returns.
   const processed = await Promise.allSettled(
     Array.from({ length: 3 }, () =>

@@ -5,7 +5,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { PGlite } from "@electric-sql/pglite";
 import OpenAI from "openai";
 import sharp from "sharp";
-import { analyzeScreenshot } from "./scan-analysis.server.ts";
+import { analyzeScreenshot, createScanClient } from "./scan-analysis.server.ts";
 import {
   extractionSchema,
   rankFixtures,
@@ -276,6 +276,38 @@ test("image decoding rejects corrupt and undersized files; encryption detects ta
   assert.throws(() => scanEncryptionKey("weak"), /64 hexadecimal/);
 });
 
+test("authentication transport diagnostics contain only booleans", async () => {
+  const logs: unknown[][] = [];
+  const original = console.error;
+  console.error = (...args: unknown[]) => {
+    logs.push(args);
+  };
+  try {
+    const client = createScanClient("sk-test-placeholder", async () =>
+      Response.json(
+        { error: { code: "invalid_api_key", message: "private provider text" } },
+        { status: 401 },
+      ),
+    );
+    await assert.rejects(client.chat.completions.create({ model: "test", messages: [] }));
+    assert.deepEqual(logs, [
+      [
+        "[virtual-scan] Authentication transport",
+        {
+          authorizationPresent: true,
+          authorizationMatchesKey: true,
+          keyFormatValid: true,
+          expectedEndpoint: true,
+          redirected: false,
+        },
+      ],
+    ]);
+    assert.ok(!JSON.stringify(logs).includes("sk-test-placeholder"));
+  } finally {
+    console.error = original;
+  }
+});
+
 test("real SDK request sends image and strict extraction prompt; provider and invalid-output failures reject", async () => {
   let text = JSON.stringify(extraction());
   let stop = "stop";
@@ -286,6 +318,7 @@ test("real SDK request sends image and strict extraction prompt; provider and in
     apiKey: "test-placeholder",
     maxRetries: 0,
     fetch: async (_url, init) => {
+      assert.equal(new Headers(init?.headers).get("authorization"), "Bearer test-placeholder");
       requests.push(JSON.parse(String(init?.body)));
       return Response.json(
         status === 200
