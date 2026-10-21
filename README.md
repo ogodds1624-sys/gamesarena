@@ -49,8 +49,8 @@ there is no pending payment. Aviator payments do not unlock the scanner.
 
 The existing React/TanStack Start UI, Better Auth authentication, Neon
 PostgreSQL database and red/black/white theme are retained. The server-only
-official `@anthropic-ai/sdk` performs real vision requests; **sharp** is the
-only new direct dependency, used for actual image decoding, static-image
+official `openai` SDK performs real vision requests; **sharp** is
+used for actual image decoding, static-image
 validation, metadata removal and normalization. Animated images, corrupt files,
 images below 100 x 100 or above 20 megapixels, and normalized PNGs exceeding
 4 MB are rejected. Screenshots are resized to at most 2400 x 2400; crop long
@@ -59,8 +59,8 @@ screenshots into readable sections instead of uploading tiny text.
 Configure these **server environment variables** (never `VITE_` variables):
 
 ```dotenv
-ANTHROPIC_API_KEY=your-private-anthropic-key
-ANTHROPIC_MODEL=claude-sonnet-5-5
+OPENAI_API_KEY=your-private-openai-key
+OPENAI_MODEL=gpt-4.1-mini
 SCAN_IMAGE_ENCRYPTION_KEY=<64 random hexadecimal characters>
 CRON_SECRET=<random secret of at least 32 characters>
 ```
@@ -68,10 +68,17 @@ CRON_SECRET=<random secret of at least 32 characters>
 Also retain the existing `DATABASE_URL` (Neon), authentication and admin
 environment variables. Keep all these values server-side, never `VITE_`
 variables. Generate independent random secrets privately; do not commit keys or
-send them in chat. Use a vision model enabled for your Anthropic account; the
+send them in chat. Use a vision model supporting Chat Completions and JSON mode
+enabled for your OpenAI API account; the
 model ID is configurable. Without the API or encryption key, uploads fail
 explicitly without spending credits. Keep the encryption key stable while jobs
 are pending; rotating it makes their ciphertext unreadable.
+The previous Anthropic SDK and environment variables are no longer used.
+Migration `0016_openai_scan_model.sql` switches pending legacy Claude jobs to
+`gpt-4.1-mini` without changing completed reports or charges. New jobs use
+`OPENAI_MODEL`. OpenAI requests use JSON mode, high-detail image input, local
+schema validation and `store: false`. An OpenAI API key with API billing is
+required; a ChatGPT subscription alone does not configure API access.
 
 ### Visible extraction and qualified rankings
 
@@ -127,7 +134,8 @@ odds may therefore produce no qualified selection.
   worker, authenticated scanner request or claim removes expired ciphertext.
   This is not instantaneous erasure from database backups or provider systems.
 - Crop account details before uploading. The full normalized image is sent to
-  Anthropic; its data/retention policies apply. Transcribed scan reports remain
+  OpenAI; its API data/retention policies apply (`store: false` does not override
+  provider abuse-monitoring retention). Transcribed scan reports remain
   in the user's private database history. Images and credentials are not logged.
 - Existing activation approval, confirmed Instant Virtual payment, supported
   country, SportyBet linking, block checks and credits remain required. Access is

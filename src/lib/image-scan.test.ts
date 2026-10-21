@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { readFile } from "node:fs/promises";
 import { randomBytes, randomUUID } from "node:crypto";
 import { PGlite } from "@electric-sql/pglite";
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import sharp from "sharp";
 import { analyzeScreenshot } from "./scan-analysis.server.ts";
 import {
@@ -231,10 +231,11 @@ test("image decoding rejects corrupt and undersized files; encryption detects ta
 
 test("real SDK request sends image and strict extraction prompt; provider and invalid-output failures reject", async () => {
   let text = JSON.stringify(extraction());
-  let stop = "end_turn";
+  let stop = "stop";
+  let refusal: string | null = null;
   let status = 200;
   const requests: Record<string, unknown>[] = [];
-  const client = new Anthropic({
+  const client = new OpenAI({
     apiKey: "test-placeholder",
     maxRetries: 0,
     fetch: async (_url, init) => {
@@ -243,15 +244,19 @@ test("real SDK request sends image and strict extraction prompt; provider and in
         status === 200
           ? {
               id: "test",
-              type: "message",
-              role: "assistant",
+              object: "chat.completion",
+              created: 1,
               model: "vision-test",
-              content: [{ type: "text", text }],
-              stop_reason: stop,
-              stop_sequence: null,
-              usage: { input_tokens: 1, output_tokens: 1 },
+              choices: [
+                {
+                  index: 0,
+                  message: { role: "assistant", content: text, refusal },
+                  finish_reason: stop,
+                },
+              ],
+              usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
             }
-          : { type: "error", error: { type: "overloaded_error", message: "unavailable" } },
+          : { error: { type: "server_error", message: "unavailable", code: null, param: null } },
         { status },
       );
     },
@@ -260,9 +265,12 @@ test("real SDK request sends image and strict extraction prompt; provider and in
     analyzeScreenshot(client, new Uint8Array([1, 2, 3]), "image/png", "vision-test");
   assert.deepEqual(await analyze(), extraction());
   assert.equal(requests[0].model, "vision-test");
-  assert.match(String(requests[0].system), /Never invent/);
-  assert.match(String(requests[0].system), /BOTH light and dark/);
-  assert.match(String(requests[0].system), /Normal real-world football/);
+  assert.match(JSON.stringify(requests[0].messages), /Never invent/);
+  assert.match(JSON.stringify(requests[0].messages), /BOTH light and dark/);
+  assert.match(JSON.stringify(requests[0].messages), /Normal real-world football/);
+  assert.deepEqual(requests[0].response_format, { type: "json_object" });
+  assert.equal(requests[0].store, false);
+  assert.match(JSON.stringify(requests[0].messages), /data:image\/png;base64,AQID/);
   assert.match(JSON.stringify(requests[0].messages), /AQID/);
   text = JSON.stringify({
     ...extraction([]),
@@ -276,11 +284,16 @@ test("real SDK request sends image and strict extraction prompt; provider and in
   await assert.rejects(analyze());
   text = JSON.stringify({ quality: "clear", fixtures: [{ home: "invented-only" }], warnings: [] });
   await assert.rejects(analyze());
-  stop = "max_tokens";
+  stop = "length";
   await assert.rejects(analyze(), /Incomplete/);
-  stop = "end_turn";
-  status = 529;
-  await assert.rejects(analyze(), /529/);
+  stop = "stop";
+  refusal = "Cannot process image";
+  await assert.rejects(analyze(), /could not extract/);
+  refusal = null;
+  for (const code of [401, 429, 500]) {
+    status = code;
+    await assert.rejects(analyze(), new RegExp(String(code)));
+  }
 });
 
 test("durable queue isolates owners, deduplicates, charges atomically, retries leases and deletes image payloads", async () => {
@@ -355,6 +368,19 @@ test("durable queue isolates owners, deduplicates, charges atomically, retries l
     assert.equal(calls, 1);
     const review = randomUUID();
     await enqueue(review);
+    await sql`update virtual_scan_jobs set model='claude-legacy-vision' where id in (${first}::uuid,${review}::uuid)`;
+    await db.exec(
+      await readFile(
+        new URL("../../migrations/0016_openai_scan_model.sql", import.meta.url),
+        "utf8",
+      ),
+    );
+    const migrated = await sql<{
+      id: string;
+      model: string;
+    }>`select id,model from virtual_scan_jobs where id in (${first}::uuid,${review}::uuid)`;
+    assert.equal(migrated.find((row) => row.id === first)?.model, "claude-legacy-vision");
+    assert.equal(migrated.find((row) => row.id === review)?.model, "gpt-4.1-mini");
     await processScanJob(
       sql,
       key,

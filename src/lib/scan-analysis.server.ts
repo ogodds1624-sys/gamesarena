@@ -1,4 +1,4 @@
-import type Anthropic from "@anthropic-ai/sdk";
+import type OpenAI from "openai";
 import { extractionSchema, type Extraction, type ScanMediaType } from "./image-scan.ts";
 
 export const EXTRACTION_PROMPT = `You identify and transcribe SportyBet Instant Football screenshots, not predict results.
@@ -34,25 +34,26 @@ For unrelated or unreadable images use empty fixtures and explain in warnings.
 If any fixtures are cut off or omitted due to limits, include a warning. No markdown or additional keys.`;
 
 export async function analyzeScreenshot(
-  client: Anthropic,
+  client: OpenAI,
   image: Uint8Array,
   mediaType: ScanMediaType,
   model: string,
 ): Promise<Extraction> {
-  const message = await client.messages.create({
+  const response = await client.chat.completions.create({
     model,
-    max_tokens: 7000,
-    system: EXTRACTION_PROMPT,
+    max_completion_tokens: 7000,
+    response_format: { type: "json_object" },
+    store: false,
     messages: [
+      { role: "system", content: EXTRACTION_PROMPT },
       {
         role: "user",
         content: [
           {
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: mediaType,
-              data: Buffer.from(image).toString("base64"),
+            type: "image_url",
+            image_url: {
+              url: `data:${mediaType};base64,${Buffer.from(image).toString("base64")}`,
+              detail: "high",
             },
           },
           {
@@ -63,11 +64,12 @@ export async function analyzeScreenshot(
       },
     ],
   });
-  if (message.stop_reason !== "end_turn") throw new Error("Incomplete scan response.");
-  const text = message.content
-    .filter((block) => block.type === "text")
-    .map((block) => block.text)
-    .join("\n");
+  const choice = response.choices[0];
+  if (!choice || choice.finish_reason !== "stop") throw new Error("Incomplete scan response.");
+  if (choice.message.refusal || !choice.message.content) {
+    throw new Error("AI service could not extract this screenshot.");
+  }
+  const text = choice.message.content;
   const parsed: unknown = JSON.parse(text);
   return extractionSchema.parse(parsed);
 }

@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { getSessionUser } from "@/lib/auth/verify.server";
 import { getSportyLink, getVirtualScanAccess } from "@/lib/admin-snapshot";
@@ -50,7 +50,7 @@ export async function scanImage(request: Request): Promise<Response> {
     if (id && !jobs.length) return scanReply({ error: "Scan not found." }, 404);
     return scanReply({ jobs });
   }
-  const apiKey = env("ANTHROPIC_API_KEY");
+  const apiKey = env("OPENAI_API_KEY");
   const encryptionKey = env("SCAN_IMAGE_ENCRYPTION_KEY");
   if (!apiKey || !encryptionKey)
     return scanReply(
@@ -65,7 +65,7 @@ export async function scanImage(request: Request): Promise<Response> {
     if (!uuid.test(id)) return scanReply({ error: "Invalid scan ID." }, 400);
     const owned = await readScanJobs(sql, user.id, id);
     if (!owned.length) return scanReply({ error: "Scan not found." }, 404);
-    const client = new Anthropic({ apiKey, timeout: 55_000, maxRetries: 0 });
+    const client = new OpenAI({ apiKey, timeout: 55_000, maxRetries: 0 });
     await processScanJob(
       sql,
       key,
@@ -129,7 +129,7 @@ export async function scanImage(request: Request): Promise<Response> {
   const [reservation] = await sql<{ job_id: string; outcome: string }>`
     select * from enqueue_virtual_scan(
       ${id}::uuid,${user.id},${hash},${encryptScanImage(normalized, key)},
-      ${env("ANTHROPIC_MODEL") ?? "claude-sonnet-5-5"}
+      ${env("OPENAI_MODEL") ?? "gpt-4.1-mini"}
     )
   `;
   if (!reservation) throw new Error("Could not create scan job.");
@@ -165,9 +165,9 @@ export async function runScanWorker(request: Request) {
   const sql = await getSql();
   await sql`select expire_virtual_scan_jobs()`;
   const key = scanEncryptionKey(env("SCAN_IMAGE_ENCRYPTION_KEY"));
-  const apiKey = env("ANTHROPIC_API_KEY");
+  const apiKey = env("OPENAI_API_KEY");
   if (!apiKey) return scanReply({ error: "AI scanner is not configured." }, 503);
-  const client = new Anthropic({ apiKey, timeout: 55_000, maxRetries: 0 });
+  const client = new OpenAI({ apiKey, timeout: 55_000, maxRetries: 0 });
   // Every provider call and DB update is awaited before the invocation returns.
   const processed = await Promise.allSettled(
     Array.from({ length: 3 }, () =>
