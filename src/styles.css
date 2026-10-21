@@ -4222,9 +4222,69 @@ body.site-front .buy-pulse.press-hold {
 }
 .scanner-results-layout {
   display: grid;
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.7fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: 20px;
+}
+.scanner-page .scanner-dropzone-reference {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  border: 2px dashed #ed1930;
+  border-radius: 28px;
+  padding: 48px 24px;
+  background: #ed193008;
+  cursor: pointer;
+  transition:
+    background 180ms ease,
+    border-color 180ms ease;
+}
+.scanner-page .scanner-dropzone-reference:hover {
+  background: #ed193012;
+  border-color: #ff6575;
+}
+.scanner-dropzone-reference.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.scanner-dropzone-reference .scanner-upload-icon {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 24px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.scanner-dropzone-title {
+  color: white;
+  font-size: clamp(21px, 3vw, 30px);
+  font-weight: 850;
+  letter-spacing: -0.035em;
+}
+.scanner-dropzone-subtitle {
+  margin-top: 14px;
+  color: #b8afb8;
+  font-size: clamp(14px, 2vw, 19px);
+  line-height: 1.6;
+}
+.scanner-results-empty {
+  padding: 42px 24px;
+  text-align: center;
+}
+.scanner-results-empty svg {
+  margin: 0 auto 16px;
+  color: #ff6575;
+}
+.scanner-results-empty h2 {
+  font-size: 20px;
+  font-weight: 800;
+}
+.scanner-results-empty p {
+  margin-top: 10px;
+  color: #b8afb8;
+  font-size: 13px;
 }
 .scanner-history-button {
   width: 100%;

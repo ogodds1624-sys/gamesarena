@@ -6,6 +6,7 @@ import {
   ImagePlus,
   LoaderCircle,
   RefreshCw,
+  Camera,
   ScanLine,
   ShieldCheck,
   CheckCircle2,
@@ -352,8 +353,9 @@ function VirtualScan() {
             </div>
             <span className="scanner-auto-tag">AUTO SCAN</span>
           </div>
-          <div
-            className="scanner-dropzone mt-4"
+          <label
+            htmlFor="sporty-screenshot"
+            className={`scanner-dropzone scanner-dropzone-reference mt-4 ${uploading || balance === 0 ? "is-disabled" : ""}`}
             onDragOver={(event) => event.preventDefault()}
             onDrop={(event) => {
               event.preventDefault();
@@ -361,11 +363,14 @@ function VirtualScan() {
             }}
           >
             <div className="scanner-upload-icon">
-              <ImagePlus size={30} aria-hidden />
+              <Camera size={46} strokeWidth={1.5} aria-hidden />
             </div>
-            <label htmlFor="sporty-screenshot" className="block font-bold">
-              Choose Instant Football screenshots or drop them here
-            </label>
+            <span className="scanner-dropzone-title">
+              {uploading ? "Uploading screenshots..." : "Upload SportyBet Screenshot"}
+            </span>
+            <span className="scanner-dropzone-subtitle">
+              Tap to select or drag &amp; drop your image
+            </span>
             <input
               id="sporty-screenshot"
               ref={fileInput}
@@ -374,25 +379,16 @@ function VirtualScan() {
               accept="image/png,image/jpeg,image/webp"
               disabled={uploading || balance === 0}
               className="scanner-file-input"
+              aria-label="Upload SportyBet Instant Football screenshots"
               onChange={(event) => {
                 void selectFiles(event.target.files);
                 event.target.value = "";
               }}
             />
-            <button
-              type="button"
-              className="scanner-primary no-button-attention mt-5"
-              data-no-cursor-lift
-              disabled={uploading || balance === 0}
-              onClick={() => fileInput.current?.click()}
-            >
-              <ImagePlus size={18} aria-hidden />{" "}
-              {uploading ? "Uploading images..." : "Choose screenshots"}
-            </button>
             <p className="mt-3 text-xs text-white/55">
               Up to 5 images / 3 MB each / static PNG, JPEG, WebP / 20 megapixels maximum
             </p>
-          </div>
+          </label>
           <p className="mt-4 text-xs leading-relaxed text-white/55">
             Keep the Instant Football heading and 1X2 odds visible. Crop out personal details.
             Uploading sends game screenshots to the AI provider. Encrypted images are kept
@@ -508,6 +504,18 @@ function VirtualScan() {
           </div>
         ) : null}
         <div className="scanner-results-layout mt-7">
+          {activeJob ? (
+            <ScanResults
+              job={activeJob}
+              working={processingJobId === activeJob.id && !isTerminal(activeJob.status)}
+            />
+          ) : (
+            <div className="scanner-panel scanner-results-empty">
+              <ScanLine size={32} aria-hidden />
+              <h2>Your scan results</h2>
+              <p>Your results will appear here, directly below your screenshot.</p>
+            </div>
+          )}
           <section className="scanner-panel" aria-labelledby="scan-history">
             <div className="scanner-section-heading">
               <RefreshCw size={20} aria-hidden />
@@ -551,16 +559,6 @@ function VirtualScan() {
               </button>
             ) : null}
           </section>
-          {activeJob ? (
-            <ScanResults
-              job={activeJob}
-              working={processingJobId === activeJob.id && !isTerminal(activeJob.status)}
-            />
-          ) : (
-            <div className="scanner-panel grid min-h-52 place-items-center text-sm text-white/55">
-              Upload or select a scan to see your results.
-            </div>
-          )}
         </div>
       </div>
     </main>
