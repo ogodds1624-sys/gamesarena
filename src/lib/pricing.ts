@@ -37,7 +37,7 @@ export type PaymentQuote = { amount: number; minutes: number | null; packageId: 
 
 export const DEFAULT_PRICING: PricingSettings = {
   Ghana: {
-    activationFee: 45,
+    activationFee: 55,
     packages: [
       { id: "quick", price: 350, minutes: 3 },
       { id: "popular", price: 800, minutes: 10 },
@@ -45,7 +45,7 @@ export const DEFAULT_PRICING: PricingSettings = {
     ],
   },
   Nigeria: {
-    activationFee: 6000,
+    activationFee: 6655,
     packages: [
       { id: "quick", price: 41986, minutes: 3 },
       { id: "popular", price: 95968, minutes: 10 },

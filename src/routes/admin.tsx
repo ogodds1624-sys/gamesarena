@@ -1,6 +1,20 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowLeftRight, Ban, Check, Diamond, Eye, EyeOff, Hexagon, LayoutGrid, List, Lock, RefreshCw, RotateCcw, Wallet } from "lucide-react";
+import {
+  ArrowLeftRight,
+  Ban,
+  Check,
+  Diamond,
+  Eye,
+  EyeOff,
+  Hexagon,
+  LayoutGrid,
+  List,
+  Lock,
+  RefreshCw,
+  RotateCcw,
+  Wallet,
+} from "lucide-react";
 import {
   addPartner,
   blockUser,
@@ -68,7 +82,10 @@ function GhanaFlag() {
       <rect width="24" height="5.34" fill="#ce1126" />
       <rect y="5.33" width="24" height="5.34" fill="#fcd116" />
       <rect y="10.66" width="24" height="5.34" fill="#006b3f" />
-      <polygon points="12,6.2 12.7,8.2 14.8,8.2 13.1,9.4 13.8,11.4 12,10.2 10.2,11.4 10.9,9.4 9.2,8.2 11.3,8.2" fill="#000" />
+      <polygon
+        points="12,6.2 12.7,8.2 14.8,8.2 13.1,9.4 13.8,11.4 12,10.2 10.2,11.4 10.9,9.4 9.2,8.2 11.3,8.2"
+        fill="#000"
+      />
     </svg>
   );
 }
@@ -135,7 +152,8 @@ const EMPTY_SNAPSHOT: AdminSnapshot = {
 };
 
 const memberCols = "member-row desk-row grid-cols-[minmax(0,1.4fr)_5.5rem_7.5rem_9rem]";
-const txCols = "tx-row desk-row grid-cols-[6.5rem_minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_8.5rem_7.5rem]";
+const txCols =
+  "tx-row desk-row grid-cols-[6.5rem_minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_8.5rem_7.5rem]";
 
 function AdminPage() {
   const [unlocked, setUnlocked] = useState(false);
@@ -213,7 +231,9 @@ function AdminPage() {
           knownPayments.current = new Set(data.payments.map((payment) => payment.id));
           const waitingPartners = data.partners.filter((partner) => partner.status === "pending");
           if (knownPartners.current) {
-            const freshPartners = waitingPartners.filter((partner) => !knownPartners.current?.has(partner.id));
+            const freshPartners = waitingPartners.filter(
+              (partner) => !knownPartners.current?.has(partner.id),
+            );
             if (freshPartners.length > 0) {
               setPartnerNotice(`${freshPartners[0].name} applied as a partner`);
             }
@@ -288,14 +308,25 @@ function AdminPage() {
   const now = new Date();
   const ghanaToday = dayKeyInZone(now, GHANA_TZ);
   const nigeriaToday = dayKeyInZone(now, NIGERIA_TZ);
-  const confirmed = view.payments.filter((payment) => payment.status === "confirmed" && payment.countsRevenue);
-  const onDay = (iso: string, key: string, timeZone: string) => Boolean(iso) && dayKeyInZone(iso, timeZone) === key;
-  const ghanaPayments = confirmed.filter((payment) => !isNairaPayment(payment.amount, payment.country));
-  const nigeriaPayments = confirmed.filter((payment) => isNairaPayment(payment.amount, payment.country));
+  const confirmed = view.payments.filter(
+    (payment) => payment.status === "confirmed" && payment.countsRevenue,
+  );
+  const onDay = (iso: string, key: string, timeZone: string) =>
+    Boolean(iso) && dayKeyInZone(iso, timeZone) === key;
+  const ghanaPayments = confirmed.filter(
+    (payment) => !isNairaPayment(payment.amount, payment.country),
+  );
+  const nigeriaPayments = confirmed.filter((payment) =>
+    isNairaPayment(payment.amount, payment.country),
+  );
   const ghanaRevenue = ghanaPayments.reduce((sum, payment) => sum + payment.amount, 0);
   const nigeriaRevenue = nigeriaPayments.reduce((sum, payment) => sum + payment.amount, 0);
-  const ghanaDaily = ghanaPayments.filter((payment) => onDay(payment.confirmedAt, ghanaToday, GHANA_TZ)).reduce((sum, payment) => sum + payment.amount, 0);
-  const nigeriaDaily = nigeriaPayments.filter((payment) => onDay(payment.confirmedAt, nigeriaToday, NIGERIA_TZ)).reduce((sum, payment) => sum + payment.amount, 0);
+  const ghanaDaily = ghanaPayments
+    .filter((payment) => onDay(payment.confirmedAt, ghanaToday, GHANA_TZ))
+    .reduce((sum, payment) => sum + payment.amount, 0);
+  const nigeriaDaily = nigeriaPayments
+    .filter((payment) => onDay(payment.confirmedAt, nigeriaToday, NIGERIA_TZ))
+    .reduce((sum, payment) => sum + payment.amount, 0);
   const pendingCount = view.payments.filter((payment) => payment.status === "pending").length;
   const partnerWait = view.partners.filter((partner) => partner.status === "pending").length;
 
@@ -311,7 +342,11 @@ function AdminPage() {
   if (!unlocked) {
     return (
       <main className="home-theme relative flex min-h-dvh items-center justify-center px-4 py-10 text-white">
-        <form autoComplete="off" onSubmit={unlock} className="menu-pop relative z-10 w-full max-w-md rounded-[28px] border border-white/10 bg-[#111111] px-6 py-8 text-center shadow-[0_20px_60px_rgba(226,59,59,0.18)]">
+        <form
+          autoComplete="off"
+          onSubmit={unlock}
+          className="menu-pop relative z-10 w-full max-w-md rounded-[28px] border border-white/10 bg-[#111111] px-6 py-8 text-center shadow-[0_20px_60px_rgba(226,59,59,0.18)]"
+        >
           <div className="mx-auto grid size-16 place-items-center rounded-full border border-red/40 bg-red/15">
             <Lock className="size-7 text-gold" aria-hidden />
           </div>
@@ -325,7 +360,12 @@ function AdminPage() {
           <label htmlFor="admin-pass" className="sr-only">
             Passcode
           </label>
-          <div className={"mt-5 flex h-14 items-center rounded-2xl border bg-ink px-4 " + (denied ? "border-red" : "border-white/15 focus-within:border-red")}>
+          <div
+            className={
+              "mt-5 flex h-14 items-center rounded-2xl border bg-ink px-4 " +
+              (denied ? "border-red" : "border-white/15 focus-within:border-red")
+            }
+          >
             <input
               id="admin-pass"
               name="admin-gate"
@@ -355,7 +395,10 @@ function AdminPage() {
               {showCode ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
             </button>
           </div>
-          <button type="submit" className="mt-5 h-14 w-full rounded-2xl bg-red text-sm font-extrabold tracking-[0.22em] text-white">
+          <button
+            type="submit"
+            className="mt-5 h-14 w-full rounded-2xl bg-red text-sm font-extrabold tracking-[0.22em] text-white"
+          >
             SIGN IN
           </button>
         </form>
@@ -371,16 +414,22 @@ function AdminPage() {
             <Diamond className="mt-1 size-4 shrink-0 fill-red text-red" aria-hidden />
             <span className="text-xl leading-tight font-black tracking-tight">Games Hub</span>
           </div>
-          <span className="rounded-full border border-red px-2.5 py-1 text-[11px] font-extrabold tracking-wide text-red">ADMIN</span>
+          <span className="rounded-full border border-red px-2.5 py-1 text-[11px] font-extrabold tracking-wide text-red">
+            ADMIN
+          </span>
         </div>
         <nav className="mt-8 space-y-1">
           {NAV.map((item) => {
             const Icon = item.icon;
             const active = tab === item.id;
             const count =
-              item.id === "transactions" ? pendingCount :
-                item.id === "partners" ? partnerWait :
-                  item.id === "payouts" ? view.payouts.filter((payout) => payout.status === "pending").length : 0;
+              item.id === "transactions"
+                ? pendingCount
+                : item.id === "partners"
+                  ? partnerWait
+                  : item.id === "payouts"
+                    ? view.payouts.filter((payout) => payout.status === "pending").length
+                    : 0;
             return (
               <button
                 key={item.id}
@@ -394,7 +443,9 @@ function AdminPage() {
                 <Icon className="size-4 shrink-0" aria-hidden />
                 <span className="min-w-0 flex-1">{item.label}</span>
                 {count > 0 ? (
-                  <span className="grid min-w-5 place-items-center rounded-full bg-white px-1.5 text-[10px] font-black text-red">{count}</span>
+                  <span className="grid min-w-5 place-items-center rounded-full bg-white px-1.5 text-[10px] font-black text-red">
+                    {count}
+                  </span>
                 ) : null}
               </button>
             );
@@ -406,25 +457,36 @@ function AdminPage() {
           <div className="flex items-center gap-3 px-4 py-3">
             <Diamond className="size-4 shrink-0 fill-red text-red" aria-hidden />
             <span className="truncate text-lg font-black tracking-tight">Games Hub</span>
-            <span className="rounded-full border border-red px-2.5 py-1 text-[11px] font-extrabold tracking-wide text-red">ADMIN</span>
+            <span className="rounded-full border border-red px-2.5 py-1 text-[11px] font-extrabold tracking-wide text-red">
+              ADMIN
+            </span>
           </div>
           <nav className="flex gap-1 overflow-x-auto px-3 pb-3">
             {NAV.map((item) => {
               const active = tab === item.id;
               const count =
-                item.id === "transactions" ? pendingCount :
-                  item.id === "partners" ? partnerWait :
-                    item.id === "payouts" ? view.payouts.filter((payout) => payout.status === "pending").length : 0;
+                item.id === "transactions"
+                  ? pendingCount
+                  : item.id === "partners"
+                    ? partnerWait
+                    : item.id === "payouts"
+                      ? view.payouts.filter((payout) => payout.status === "pending").length
+                      : 0;
               return (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => openTab(item.id)}
-                  className={"inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-extrabold tracking-wide " + (active ? "bg-red text-white" : "text-[#9aa3b2]")}
+                  className={
+                    "inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-extrabold tracking-wide " +
+                    (active ? "bg-red text-white" : "text-[#9aa3b2]")
+                  }
                 >
                   {item.label}
                   {count > 0 ? (
-                    <span className="grid min-w-4 place-items-center rounded-full bg-white px-1 text-[10px] font-black text-red">{count}</span>
+                    <span className="grid min-w-4 place-items-center rounded-full bg-white px-1 text-[10px] font-black text-red">
+                      {count}
+                    </span>
                   ) : null}
                 </button>
               );
@@ -438,7 +500,11 @@ function AdminPage() {
           </p>
           <div className="admin-title mt-2">
             <h1 className="font-black tracking-tight capitalize">
-              {tab === "overview" ? "Overview" : tab === "transactions" ? "Transaction History" : title.toLowerCase()}
+              {tab === "overview"
+                ? "Overview"
+                : tab === "transactions"
+                  ? "Transaction History"
+                  : title.toLowerCase()}
             </h1>
             <button
               type="button"
@@ -450,19 +516,35 @@ function AdminPage() {
             </button>
           </div>
           {notice ? (
-            <button type="button" onClick={() => openTab("transactions")} className="mt-4 flex w-full items-center justify-between gap-3 rounded-2xl border border-[#f3b4b4] bg-red/15 px-4 py-3 text-left text-sm font-bold">
+            <button
+              type="button"
+              onClick={() => openTab("transactions")}
+              className="mt-4 flex w-full items-center justify-between gap-3 rounded-2xl border border-[#f3b4b4] bg-red/15 px-4 py-3 text-left text-sm font-bold"
+            >
               <span>{notice}</span>
-              <span className="shrink-0 text-xs font-extrabold tracking-wide text-[#ff8d8d]">{pendingCount} PENDING</span>
+              <span className="shrink-0 text-xs font-extrabold tracking-wide text-[#ff8d8d]">
+                {pendingCount} PENDING
+              </span>
             </button>
           ) : null}
           {partnerWait > 0 ? (
-            <button type="button" onClick={() => openTab("partners")} className="mt-4 flex w-full items-center justify-between gap-3 rounded-2xl border border-[#f3b4b4] bg-red/15 px-4 py-3 text-left text-sm font-bold">
+            <button
+              type="button"
+              onClick={() => openTab("partners")}
+              className="mt-4 flex w-full items-center justify-between gap-3 rounded-2xl border border-[#f3b4b4] bg-red/15 px-4 py-3 text-left text-sm font-bold"
+            >
               <span>{partnerNotice ?? "A new partner is waiting for approval"}</span>
-              <span className="shrink-0 text-xs font-extrabold tracking-wide text-[#ff8d8d]">{partnerWait} TO APPROVE</span>
+              <span className="shrink-0 text-xs font-extrabold tracking-wide text-[#ff8d8d]">
+                {partnerWait} TO APPROVE
+              </span>
             </button>
           ) : null}
           {view.payouts.some((payout) => payout.status === "pending") ? (
-            <button type="button" onClick={() => openTab("payouts")} className="mt-4 flex w-full items-center justify-between gap-3 rounded-2xl border border-[#f3b4b4] bg-red/15 px-4 py-3 text-left text-sm font-bold">
+            <button
+              type="button"
+              onClick={() => openTab("payouts")}
+              className="mt-4 flex w-full items-center justify-between gap-3 rounded-2xl border border-[#f3b4b4] bg-red/15 px-4 py-3 text-left text-sm font-bold"
+            >
               <span>Partner payout requests need review</span>
               <span className="shrink-0 text-xs font-extrabold tracking-wide text-[#ff8d8d]">
                 {view.payouts.filter((payout) => payout.status === "pending").length} PENDING
@@ -473,39 +555,116 @@ function AdminPage() {
           {tab === "overview" ? (
             <>
               <h2 className="mt-8 text-2xl font-black">At a glance</h2>
-              <p className="mt-1 text-base text-[#8b95a7]">Live snapshot of accounts that connected SportyBet.</p>
+              <p className="mt-1 text-base text-[#8b95a7]">
+                Live snapshot of accounts that connected SportyBet.
+              </p>
               <div className="stat-grid mt-4">
-                <StatCard label="TOTAL MEMBERS" value={String(view.total)} note={`${view.total} connected accounts`} icon={<List className="size-5" />} />
-                <StatCard label="TODAY" value={String(view.today)} note={`${view.today} accounts today`} icon={<List className="size-5" />} />
+                <StatCard
+                  label="TOTAL MEMBERS"
+                  value={String(view.total)}
+                  note={`${view.total} connected accounts`}
+                  icon={<List className="size-5" />}
+                />
+                <StatCard
+                  label="TODAY"
+                  value={String(view.today)}
+                  note={`${view.today} accounts today`}
+                  icon={<List className="size-5" />}
+                />
               </div>
               <div className="stat-grid mt-8">
-                <StatCard label="DAILY GHANA" value={`GHS ${ghanaDaily.toLocaleString("en-GH")}`} note={`${liveDayLabel(ghanaToday, GHANA_TZ)} · resets at midnight`} gold icon={<GhanaFlag />} iconClass="bg-white/10" />
-                <StatCard label="TOTAL GHANA" value={`GHS ${ghanaRevenue.toLocaleString("en-GH")}`} note="Does not reset" gold icon={<GhanaFlag />} iconClass="bg-white/10" />
+                <StatCard
+                  label="DAILY GHANA"
+                  value={`GHS ${ghanaDaily.toLocaleString("en-GH")}`}
+                  note={`${liveDayLabel(ghanaToday, GHANA_TZ)} · resets at midnight`}
+                  gold
+                  icon={<GhanaFlag />}
+                  iconClass="bg-white/10"
+                />
+                <StatCard
+                  label="TOTAL GHANA"
+                  value={`GHS ${ghanaRevenue.toLocaleString("en-GH")}`}
+                  note="Does not reset"
+                  gold
+                  icon={<GhanaFlag />}
+                  iconClass="bg-white/10"
+                />
               </div>
               <WeekRevenue payments={view.payments} country="Ghana" />
               <div className="stat-grid mt-4">
-                <StatCard label="DAILY NIGERIA" value={`₦${nigeriaDaily.toLocaleString("en-NG")}`} note={`${liveDayLabel(nigeriaToday, NIGERIA_TZ)} · resets at midnight`} icon={<NigeriaFlag />} iconClass="bg-white/10" />
-                <StatCard label="TOTAL NIGERIA" value={`₦${nigeriaRevenue.toLocaleString("en-NG")}`} note="Does not reset" icon={<NigeriaFlag />} iconClass="bg-white/10" />
+                <StatCard
+                  label="DAILY NIGERIA"
+                  value={`₦${nigeriaDaily.toLocaleString("en-NG")}`}
+                  note={`${liveDayLabel(nigeriaToday, NIGERIA_TZ)} · resets at midnight`}
+                  icon={<NigeriaFlag />}
+                  iconClass="bg-white/10"
+                />
+                <StatCard
+                  label="TOTAL NIGERIA"
+                  value={`₦${nigeriaRevenue.toLocaleString("en-NG")}`}
+                  note="Does not reset"
+                  icon={<NigeriaFlag />}
+                  iconClass="bg-white/10"
+                />
               </div>
               <WeekRevenue payments={view.payments} country="Nigeria" />
-              <TestimonyDesk rows={view.testimonies} busy={spinning} onChange={setSnapshot} onBusy={setSpinning} />
+              <TestimonyDesk
+                rows={view.testimonies}
+                busy={spinning}
+                onChange={setSnapshot}
+                onBusy={setSpinning}
+              />
             </>
           ) : tab === "transactions" ? (
-            <TransactionHistory payments={view.payments} busy={spinning} onConfirm={(id) => void confirm(id)} onReject={(id) => void reject(id)} />
+            <TransactionHistory
+              payments={view.payments}
+              busy={spinning}
+              onConfirm={(id) => void confirm(id)}
+              onReject={(id) => void reject(id)}
+            />
           ) : tab === "members" ? (
             <div className="mt-8">
               <MemberList members={view.members} />
             </div>
           ) : tab === "partners" ? (
-            <PartnerDesk partners={view.partners} busy={spinning} onChange={setSnapshot} onBusy={setSpinning} />
+            <PartnerDesk
+              partners={view.partners}
+              busy={spinning}
+              onChange={setSnapshot}
+              onBusy={setSpinning}
+            />
           ) : tab === "payouts" ? (
-            <PartnerPayoutDesk payouts={view.payouts} busy={spinning} onChange={setSnapshot} onBusy={setSpinning} />
+            <PartnerPayoutDesk
+              payouts={view.payouts}
+              busy={spinning}
+              onChange={setSnapshot}
+              onBusy={setSpinning}
+            />
           ) : tab === "block" ? (
-            <BlockDesk rows={view.blocked} busy={spinning} onChange={setSnapshot} onBusy={setSpinning} />
+            <BlockDesk
+              rows={view.blocked}
+              busy={spinning}
+              onChange={setSnapshot}
+              onBusy={setSpinning}
+            />
           ) : tab === "pricing" ? (
-            snapshot ? <AdminPricing pricing={snapshot.pricing} busy={spinning} onChange={setSnapshot} onBusy={setSpinning} /> : <p className="mt-6">Loading pricing…</p>
+            snapshot ? (
+              <AdminPricing
+                pricing={snapshot.pricing}
+                busy={spinning}
+                onChange={setSnapshot}
+                onBusy={setSpinning}
+              />
+            ) : (
+              <p className="mt-6">Loading pricing…</p>
+            )
           ) : (
-            <PaymentGateway  gateway={view.gateway} busy={spinning} onChange={setSnapshot} onBusy={setSpinning} />
+            <PaymentGateway
+              gateway={view.gateway}
+              busy={spinning}
+              onChange={setSnapshot}
+              onBusy={setSpinning}
+            />
           )}
         </div>
       </section>
@@ -579,14 +738,18 @@ function PaymentGateway({
                 bumpGateway();
                 onChange(next);
               })
-              .catch((err) => setError(err instanceof Error ? err.message : "Could not save rates."))
+              .catch((err) =>
+                setError(err instanceof Error ? err.message : "Could not save rates."),
+              )
               .finally(() => onBusy(false));
           }}
         >
           <div className="grid gap-4 md:grid-cols-2">
             {fields.map(([key, label]) => (
               <label key={key} className="block">
-                <span className="text-[11px] font-bold tracking-[0.12em] text-[#9aa3b2]">{label}</span>
+                <span className="text-[11px] font-bold tracking-[0.12em] text-[#9aa3b2]">
+                  {label}
+                </span>
                 <span className="mt-1 flex items-center gap-2">
                   <input
                     value={rates[key]}
@@ -607,7 +770,11 @@ function PaymentGateway({
             ))}
           </div>
           {error ? <p className="mt-3 text-sm text-red">{error}</p> : null}
-          <button type="submit" disabled={busy} className="mt-5 h-11 rounded-lg bg-red px-5 text-sm font-extrabold tracking-wide text-white disabled:opacity-60">
+          <button
+            type="submit"
+            disabled={busy}
+            className="mt-5 h-11 rounded-lg bg-red px-5 text-sm font-extrabold tracking-wide text-white disabled:opacity-60"
+          >
             SAVE RATES
           </button>
         </form>
@@ -663,10 +830,16 @@ function CheckoutSettings({
     setForm((current) => recipe(current));
   }
 
-  function patchList<T>(key: "wallets" | "banks" | "nigeriaBanks", index: number, patch: Partial<T>) {
+  function patchList<T>(
+    key: "wallets" | "banks" | "nigeriaBanks",
+    index: number,
+    patch: Partial<T>,
+  ) {
     update((current) => ({
       ...current,
-      [key]: current[key].map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
+      [key]: current[key].map((item, itemIndex) =>
+        itemIndex === index ? { ...item, ...patch } : item,
+      ),
     }));
   }
 
@@ -678,11 +851,19 @@ function CheckoutSettings({
         onSubmit={(event) => {
           event.preventDefault();
           if (!hasCheckoutSettings(form)) return;
-          if (form.wallets.some((wallet) => (wallet.number.trim() || wallet.name.trim()) && !wallet.network)) {
+          if (
+            form.wallets.some(
+              (wallet) => (wallet.number.trim() || wallet.name.trim()) && !wallet.network,
+            )
+          ) {
             setError("Choose a network for each Ghana MoMo wallet.");
             return;
           }
-          if (form.banks.some((account) => (account.number.trim() || account.name.trim()) && !account.bank)) {
+          if (
+            form.banks.some(
+              (account) => (account.number.trim() || account.name.trim()) && !account.bank,
+            )
+          ) {
             setError("Choose a bank for each Ghana bank account.");
             return;
           }
@@ -697,29 +878,59 @@ function CheckoutSettings({
               window.clearTimeout(savedTimer.current);
               savedTimer.current = window.setTimeout(() => setSaved(false), 2000);
             })
-            .catch((err) => setError(err instanceof Error ? err.message : "Could not save checkout."))
+            .catch((err) =>
+              setError(err instanceof Error ? err.message : "Could not save checkout."),
+            )
             .finally(() => onBusy(false));
         }}
       >
         <label className="block">
-          <span className="text-[11px] font-bold tracking-[0.14em] text-[#9aa3b2]">BUSINESS / DISPLAY NAME</span>
-          <input value={form.businessName} onChange={(event) => update((current) => ({ ...current, businessName: event.target.value }))} className="mt-1 h-11 w-full rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none" />
+          <span className="text-[11px] font-bold tracking-[0.14em] text-[#9aa3b2]">
+            BUSINESS / DISPLAY NAME
+          </span>
+          <input
+            value={form.businessName}
+            onChange={(event) =>
+              update((current) => ({ ...current, businessName: event.target.value }))
+            }
+            className="mt-1 h-11 w-full rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none"
+          />
         </label>
         <label className="block">
-          <span className="text-[11px] font-bold tracking-[0.14em] text-[#9aa3b2]">WHATSAPP SUPPORT NUMBER</span>
-          <input value={form.whatsapp} onChange={(event) => update((current) => ({ ...current, whatsapp: event.target.value }))} className="mt-1 h-11 w-full rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none" />
+          <span className="text-[11px] font-bold tracking-[0.14em] text-[#9aa3b2]">
+            WHATSAPP SUPPORT NUMBER
+          </span>
+          <input
+            value={form.whatsapp}
+            onChange={(event) =>
+              update((current) => ({ ...current, whatsapp: event.target.value }))
+            }
+            className="mt-1 h-11 w-full rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none"
+          />
         </label>
         <label className="block">
-          <span className="text-[11px] font-bold tracking-[0.14em] text-[#9aa3b2]">SUPPORT EMAIL</span>
-          <input value={form.email} onChange={(event) => update((current) => ({ ...current, email: event.target.value }))} className="mt-1 h-11 w-full rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none" />
+          <span className="text-[11px] font-bold tracking-[0.14em] text-[#9aa3b2]">
+            SUPPORT EMAIL
+          </span>
+          <input
+            value={form.email}
+            onChange={(event) => update((current) => ({ ...current, email: event.target.value }))}
+            className="mt-1 h-11 w-full rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none"
+          />
         </label>
-        <Toggle label="Ghana MoMo" on={form.momo} onClick={() => update((current) => ({ ...current, momo: !current.momo }))} />
+        <Toggle
+          label="Ghana MoMo"
+          on={form.momo}
+          onClick={() => update((current) => ({ ...current, momo: !current.momo }))}
+        />
         {form.wallets.map((wallet, index) => (
           <div key={`wallet-${index}`} className="grid gap-2 md:grid-cols-3">
             <select
               value={wallet.network}
               onChange={(event) => {
-                const network = GHANA_MOMO_NETWORKS.find((option) => option.value === event.target.value)?.value ?? "";
+                const network =
+                  GHANA_MOMO_NETWORKS.find((option) => option.value === event.target.value)
+                    ?.value ?? "";
                 patchList<MomoWallet>("wallets", index, { network });
               }}
               className="h-11 rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none"
@@ -731,29 +942,90 @@ function CheckoutSettings({
                 </option>
               ))}
             </select>
-            <input value={wallet.number} onChange={(event) => patchList<MomoWallet>("wallets", index, { number: event.target.value })} placeholder="Number" className="h-11 rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none" />
-            <input value={wallet.name} onChange={(event) => patchList<MomoWallet>("wallets", index, { name: event.target.value })} placeholder="Name" className="h-11 rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none" />
+            <input
+              value={wallet.number}
+              onChange={(event) =>
+                patchList<MomoWallet>("wallets", index, { number: event.target.value })
+              }
+              placeholder="Number"
+              className="h-11 rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none"
+            />
+            <input
+              value={wallet.name}
+              onChange={(event) =>
+                patchList<MomoWallet>("wallets", index, { name: event.target.value })
+              }
+              placeholder="Name"
+              className="h-11 rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none"
+            />
           </div>
         ))}
-        <button type="button" onClick={() => update((current) => ({ ...current, wallets: [...current.wallets, { network: "", number: "", name: "" }] }))} className="h-10 w-fit rounded-lg border border-white/15 px-3 text-xs font-extrabold">
+        <button
+          type="button"
+          onClick={() =>
+            update((current) => ({
+              ...current,
+              wallets: [...current.wallets, { network: "", number: "", name: "" }],
+            }))
+          }
+          className="h-10 w-fit rounded-lg border border-white/15 px-3 text-xs font-extrabold"
+        >
           ADD MOMO
         </button>
-        <Toggle label="Ghana bank" on={form.bank} onClick={() => update((current) => ({ ...current, bank: !current.bank }))} />
+        <Toggle
+          label="Ghana bank"
+          on={form.bank}
+          onClick={() => update((current) => ({ ...current, bank: !current.bank }))}
+        />
         {form.banks.map((account, index) => (
-          <GhanaBankFields key={`bank-${index}`} account={account} onChange={(patch) => patchList<BankAccount>("banks", index, patch)} />
+          <GhanaBankFields
+            key={`bank-${index}`}
+            account={account}
+            onChange={(patch) => patchList<BankAccount>("banks", index, patch)}
+          />
         ))}
-        <button type="button" onClick={() => update((current) => ({ ...current, banks: [...current.banks, { bank: "", number: "", name: "" }] }))} className="h-10 w-fit rounded-lg border border-white/15 px-3 text-xs font-extrabold">
+        <button
+          type="button"
+          onClick={() =>
+            update((current) => ({
+              ...current,
+              banks: [...current.banks, { bank: "", number: "", name: "" }],
+            }))
+          }
+          className="h-10 w-fit rounded-lg border border-white/15 px-3 text-xs font-extrabold"
+        >
           ADD BANK
         </button>
-        <Toggle label="Nigeria bank transfer" on={form.nigeriaOn} onClick={() => update((current) => ({ ...current, nigeriaOn: !current.nigeriaOn }))} />
+        <Toggle
+          label="Nigeria bank transfer"
+          on={form.nigeriaOn}
+          onClick={() => update((current) => ({ ...current, nigeriaOn: !current.nigeriaOn }))}
+        />
         {form.nigeriaBanks.map((account, index) => (
-          <BankFields key={`ng-${index}`} account={account} onChange={(patch) => patchList<BankAccount>("nigeriaBanks", index, patch)} />
+          <BankFields
+            key={`ng-${index}`}
+            account={account}
+            onChange={(patch) => patchList<BankAccount>("nigeriaBanks", index, patch)}
+          />
         ))}
-        <button type="button" onClick={() => update((current) => ({ ...current, nigeriaBanks: [...current.nigeriaBanks, { bank: "", number: "", name: "" }] }))} className="h-10 w-fit rounded-lg border border-white/15 px-3 text-xs font-extrabold">
+        <button
+          type="button"
+          onClick={() =>
+            update((current) => ({
+              ...current,
+              nigeriaBanks: [...current.nigeriaBanks, { bank: "", number: "", name: "" }],
+            }))
+          }
+          className="h-10 w-fit rounded-lg border border-white/15 px-3 text-xs font-extrabold"
+        >
           ADD NIGERIA ACCOUNT
         </button>
         {error ? <p className="text-sm text-red">{error}</p> : null}
-        <button type="submit" disabled={busy || !hasCheckoutSettings(form)} className="h-11 w-fit rounded-lg bg-red px-5 text-sm font-extrabold tracking-wide text-white disabled:pointer-events-none disabled:opacity-40">
+        <button
+          type="submit"
+          disabled={busy || !hasCheckoutSettings(form)}
+          className="h-11 w-fit rounded-lg bg-red px-5 text-sm font-extrabold tracking-wide text-white disabled:pointer-events-none disabled:opacity-40"
+        >
           SAVE SETTINGS
         </button>
       </form>
@@ -764,7 +1036,11 @@ function CheckoutSettings({
 
 function SavedFlash() {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/75 px-6" role="status" aria-live="polite">
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-black/75 px-6"
+      role="status"
+      aria-live="polite"
+    >
       <section className="save-flash w-full max-w-xs rounded-[28px] border border-white/10 bg-[#111111] px-6 py-10 text-center shadow-[0_20px_60px_rgba(226,59,59,0.28)]">
         <div className="mark-pop mx-auto grid size-16 place-items-center rounded-2xl bg-gradient-to-b from-[#4ade80] to-[#16a34a] shadow-[0_8px_16px_rgba(22,163,74,0.35)]">
           <Check className="size-9 text-white" strokeWidth={3} aria-hidden />
@@ -778,26 +1054,62 @@ function SavedFlash() {
 
 function Toggle({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 px-3 py-3 text-left">
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center justify-between gap-3 rounded-xl border border-white/10 px-3 py-3 text-left"
+    >
       <span className="text-sm font-extrabold">{label}</span>
       <span className={"relative h-7 w-12 rounded-full " + (on ? "bg-[#4b5563]" : "bg-[#e5e7eb]")}>
-        <span className={"absolute top-0.5 size-6 rounded-full bg-white shadow " + (on ? "right-0.5" : "left-0.5")} />
+        <span
+          className={
+            "absolute top-0.5 size-6 rounded-full bg-white shadow " +
+            (on ? "right-0.5" : "left-0.5")
+          }
+        />
       </span>
     </button>
   );
 }
 
-function BankFields({ account, onChange }: { account: BankAccount; onChange: (patch: Partial<BankAccount>) => void }) {
+function BankFields({
+  account,
+  onChange,
+}: {
+  account: BankAccount;
+  onChange: (patch: Partial<BankAccount>) => void;
+}) {
   return (
     <div className="grid gap-2 md:grid-cols-3">
-      <input value={account.bank} onChange={(event) => onChange({ bank: event.target.value })} placeholder="Bank" className="h-11 rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none" />
-      <input value={account.number} onChange={(event) => onChange({ number: event.target.value })} placeholder="Account number" className="h-11 rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none" />
-      <input value={account.name} onChange={(event) => onChange({ name: event.target.value })} placeholder="Account name" className="h-11 rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none" />
+      <input
+        value={account.bank}
+        onChange={(event) => onChange({ bank: event.target.value })}
+        placeholder="Bank"
+        className="h-11 rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none"
+      />
+      <input
+        value={account.number}
+        onChange={(event) => onChange({ number: event.target.value })}
+        placeholder="Account number"
+        className="h-11 rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none"
+      />
+      <input
+        value={account.name}
+        onChange={(event) => onChange({ name: event.target.value })}
+        placeholder="Account name"
+        className="h-11 rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none"
+      />
     </div>
   );
 }
 
-function GhanaBankFields({ account, onChange }: { account: BankAccount; onChange: (patch: Partial<BankAccount>) => void }) {
+function GhanaBankFields({
+  account,
+  onChange,
+}: {
+  account: BankAccount;
+  onChange: (patch: Partial<BankAccount>) => void;
+}) {
   return (
     <div className="grid gap-2 md:grid-cols-3">
       <select
@@ -815,8 +1127,18 @@ function GhanaBankFields({ account, onChange }: { account: BankAccount; onChange
           </option>
         ))}
       </select>
-      <input value={account.number} onChange={(event) => onChange({ number: event.target.value })} placeholder="Account number" className="h-11 rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none" />
-      <input value={account.name} onChange={(event) => onChange({ name: event.target.value })} placeholder="Account name" className="h-11 rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none" />
+      <input
+        value={account.number}
+        onChange={(event) => onChange({ number: event.target.value })}
+        placeholder="Account number"
+        className="h-11 rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none"
+      />
+      <input
+        value={account.name}
+        onChange={(event) => onChange({ name: event.target.value })}
+        placeholder="Account name"
+        className="h-11 rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none"
+      />
     </div>
   );
 }
@@ -880,7 +1202,14 @@ function PartnerDesk({
             });
           }}
         >
-          <input value={name} onChange={(event) => setName(event.target.value)} name="partner-name" autoComplete="off" placeholder="Name" className="h-11 rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none" />
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            name="partner-name"
+            autoComplete="off"
+            placeholder="Name"
+            className="h-11 rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none"
+          />
           <input
             value={email}
             onChange={(event) => setEmail(event.target.value)}
@@ -906,9 +1235,20 @@ function PartnerDesk({
             onFocus={(event) => event.currentTarget.removeAttribute("readonly")}
             className="h-11 rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none"
           />
-          <input value={code} onChange={(event) => setCode(event.target.value)} name="partner-code" autoComplete="off" placeholder="Code (optional)" className="h-11 rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none" />
+          <input
+            value={code}
+            onChange={(event) => setCode(event.target.value)}
+            name="partner-code"
+            autoComplete="off"
+            placeholder="Code (optional)"
+            className="h-11 rounded-lg border border-white/15 bg-ink px-3 text-sm outline-none"
+          />
           {error ? <p className="text-sm text-red md:col-span-2">{error}</p> : null}
-          <button type="submit" disabled={busy} className="h-11 w-fit rounded-lg bg-red px-5 text-sm font-extrabold tracking-wide text-white disabled:opacity-60">
+          <button
+            type="submit"
+            disabled={busy}
+            className="h-11 w-fit rounded-lg bg-red px-5 text-sm font-extrabold tracking-wide text-white disabled:opacity-60"
+          >
             ADD PARTNER
           </button>
         </form>
@@ -916,77 +1256,119 @@ function PartnerDesk({
       <section className="overflow-hidden rounded-3xl border border-white/10 bg-[#111111]">
         <div className="px-4 py-4">
           <h2 className="text-lg font-black">Partners</h2>
-          <p className="mt-1 text-sm text-[#8b95a7]">Members who open /?ref=CODE are credited to this partner in Ghana and Nigeria.</p>
+          <p className="mt-1 text-sm text-[#8b95a7]">
+            Members who open /?ref=CODE are credited to this partner in Ghana and Nigeria.
+          </p>
         </div>
         <div className="overflow-x-auto">
           <div className="min-w-[76rem]">
-        <div className={partnerCols + " desk-head text-[11px] tracking-[0.12em]"}>
-          <span>PARTNER</span>
-          <span>ACTIONS</span>
-          <span>STATUS</span>
-          <span>CODE</span>
-          <span className="whitespace-nowrap">REFERRAL LINK</span>
-          <span className="pl-3 whitespace-nowrap">COMMISSION</span>
-          <span className="pl-4 whitespace-nowrap">REVENUE (GHS)</span>
-          <span className="pl-3 whitespace-nowrap">REVENUE (N)</span>
-          <span className="pl-3 whitespace-nowrap">REVENUE (YOU)</span>
-        </div>
-        {partners.length === 0 ? (
-          <p className="px-4 py-5 text-sm text-[#6b7280]">No partners yet.</p>
-        ) : (
-          partners.map((partner) => {
-            const link = `${window.location.origin}/?ref=${partner.code}`;
-            return (
-              <article key={partner.id} className={partnerCols + " text-sm"}>
-                <div className="min-w-0">
-                  <p className="truncate font-extrabold">{partner.name}</p>
-                  <p className="truncate text-xs text-[#6b7280]">{partner.email}</p>
-                </div>
-                <div>
-                  <button type="button" disabled={busy} onClick={() => void run(() => deletePartner({ data: { id: partner.id } }))} className="h-7 rounded-lg border border-red/80 px-2 text-[10px] font-extrabold text-red disabled:opacity-60">
-                    DELETE
-                  </button>
-                </div>
-                <div className="flex min-w-0 flex-col items-start gap-1">
-                  <span className={partner.status === "approved" ? "pill-active" : "pill-unpaid"}>
-                    {partner.status === "approved" ? "APPROVED" : partner.status === "pending" ? "PENDING" : "LOCKED"}
-                  </span>
-                  {partner.status === "pending" ? (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void run(() => setPartnerLock({ data: { id: partner.id, locked: false } }))}
-                      className="h-7 rounded-lg bg-red px-2 text-[10px] font-extrabold text-white disabled:opacity-60"
-                    >
-                      APPROVE
-                    </button>
-                  ) : null}
-                </div>
-                <div className="flex min-w-0 items-center gap-2">
-                  <span className="truncate font-bold">{partner.code}</span>
-                </div>
-                <div className="min-w-0 overflow-hidden">
-                  <button type="button" onClick={() => void copy(`${partner.id}-link`, link)} className="block w-full truncate text-left text-xs font-bold text-white">
-                    {copied === `${partner.id}-link` ? "COPIED" : link}
-                  </button>
-                </div>
-                <div className="pl-3">
-                  <CommissionRate value={partner.commission} disabled={busy} onSave={(commission) => void run(() => setPartnerCommission({ data: { id: partner.id, commission } }))} />
-                </div>
-                <span className="pl-4 whitespace-nowrap text-xs font-bold">GHS {partner.revenue.toLocaleString("en-GH")}</span>
-                <span className="pl-3 whitespace-nowrap text-xs font-bold">₦{partner.nigeriaRevenue.toLocaleString("en-NG")}</span>
-                <div className="pl-3 text-xs font-bold">
-                  <p className="whitespace-nowrap text-[#e50914]">
-                    GHS {(partner.revenueYouGhs ?? (partner.revenue - Math.round((partner.revenue * partner.commission) / 100))).toLocaleString("en-GH")}
-                  </p>
-                  <p className="mt-1 whitespace-nowrap text-[#e50914]">
-                    ₦{(partner.revenueYouNgn ?? (partner.nigeriaRevenue - Math.round((partner.nigeriaRevenue * partner.commission) / 100))).toLocaleString("en-NG")}
-                  </p>
-                </div>
-              </article>
-            );
-          })
-        )}
+            <div className={partnerCols + " desk-head text-[11px] tracking-[0.12em]"}>
+              <span>PARTNER</span>
+              <span>ACTIONS</span>
+              <span>STATUS</span>
+              <span>CODE</span>
+              <span className="whitespace-nowrap">REFERRAL LINK</span>
+              <span className="pl-3 whitespace-nowrap">COMMISSION</span>
+              <span className="pl-4 whitespace-nowrap">REVENUE (GHS)</span>
+              <span className="pl-3 whitespace-nowrap">REVENUE (N)</span>
+              <span className="pl-3 whitespace-nowrap">REVENUE (YOU)</span>
+            </div>
+            {partners.length === 0 ? (
+              <p className="px-4 py-5 text-sm text-[#6b7280]">No partners yet.</p>
+            ) : (
+              partners.map((partner) => {
+                const link = `${window.location.origin}/?ref=${partner.code}`;
+                return (
+                  <article key={partner.id} className={partnerCols + " text-sm"}>
+                    <div className="min-w-0">
+                      <p className="truncate font-extrabold">{partner.name}</p>
+                      <p className="truncate text-xs text-[#6b7280]">{partner.email}</p>
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void run(() => deletePartner({ data: { id: partner.id } }))}
+                        className="h-7 rounded-lg border border-red/80 px-2 text-[10px] font-extrabold text-red disabled:opacity-60"
+                      >
+                        DELETE
+                      </button>
+                    </div>
+                    <div className="flex min-w-0 flex-col items-start gap-1">
+                      <span
+                        className={partner.status === "approved" ? "pill-active" : "pill-unpaid"}
+                      >
+                        {partner.status === "approved"
+                          ? "APPROVED"
+                          : partner.status === "pending"
+                            ? "PENDING"
+                            : "LOCKED"}
+                      </span>
+                      {partner.status === "pending" ? (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() =>
+                            void run(() =>
+                              setPartnerLock({ data: { id: partner.id, locked: false } }),
+                            )
+                          }
+                          className="h-7 rounded-lg bg-red px-2 text-[10px] font-extrabold text-white disabled:opacity-60"
+                        >
+                          APPROVE
+                        </button>
+                      ) : null}
+                    </div>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="truncate font-bold">{partner.code}</span>
+                    </div>
+                    <div className="min-w-0 overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => void copy(`${partner.id}-link`, link)}
+                        className="block w-full truncate text-left text-xs font-bold text-white"
+                      >
+                        {copied === `${partner.id}-link` ? "COPIED" : link}
+                      </button>
+                    </div>
+                    <div className="pl-3">
+                      <CommissionRate
+                        value={partner.commission}
+                        disabled={busy}
+                        onSave={(commission) =>
+                          void run(() =>
+                            setPartnerCommission({ data: { id: partner.id, commission } }),
+                          )
+                        }
+                      />
+                    </div>
+                    <span className="pl-4 whitespace-nowrap text-xs font-bold">
+                      GHS {partner.revenue.toLocaleString("en-GH")}
+                    </span>
+                    <span className="pl-3 whitespace-nowrap text-xs font-bold">
+                      ₦{partner.nigeriaRevenue.toLocaleString("en-NG")}
+                    </span>
+                    <div className="pl-3 text-xs font-bold">
+                      <p className="whitespace-nowrap text-[#e50914]">
+                        GHS{" "}
+                        {(
+                          partner.revenueYouGhs ??
+                          partner.revenue - Math.round((partner.revenue * partner.commission) / 100)
+                        ).toLocaleString("en-GH")}
+                      </p>
+                      <p className="mt-1 whitespace-nowrap text-[#e50914]">
+                        ₦
+                        {(
+                          partner.revenueYouNgn ??
+                          partner.nigeriaRevenue -
+                            Math.round((partner.nigeriaRevenue * partner.commission) / 100)
+                        ).toLocaleString("en-NG")}
+                      </p>
+                    </div>
+                  </article>
+                );
+              })
+            )}
           </div>
         </div>
       </section>
@@ -1023,10 +1405,14 @@ function PartnerPayoutDesk({
     <div className="mt-6 space-y-4">
       <section className="rounded-3xl border border-white/10 bg-[#111111] px-4 py-5">
         <h2 className="text-lg font-black">Partner payout requests</h2>
-        <p className="mt-1 text-sm text-[#8b95a7]">Review each request and the partner’s submitted payout account details.</p>
+        <p className="mt-1 text-sm text-[#8b95a7]">
+          Review each request and the partner’s submitted payout account details.
+        </p>
         {error ? <p className="mt-3 text-sm font-bold text-red">{error}</p> : null}
         {payouts.length === 0 ? (
-          <p className="mt-5 rounded-xl border border-white/10 px-4 py-6 text-center text-sm text-[#8b95a7]">No payout requests yet.</p>
+          <p className="mt-5 rounded-xl border border-white/10 px-4 py-6 text-center text-sm text-[#8b95a7]">
+            No payout requests yet.
+          </p>
         ) : (
           <div className="mt-4 space-y-3">
             {payouts.map((payout) => (
@@ -1038,29 +1424,58 @@ function PartnerPayoutDesk({
                   </div>
                   <div className="text-right">
                     <p className="text-lg font-black text-gold">
-                      {payout.currency === "GHS" ? "GHS " : "₦"}{payout.amount.toLocaleString(payout.currency === "GHS" ? "en-GH" : "en-NG")}
+                      {payout.currency === "GHS" ? "GHS " : "₦"}
+                      {payout.amount.toLocaleString(payout.currency === "GHS" ? "en-GH" : "en-NG")}
                     </p>
-                    <span className={payout.status === "paid" ? "pill-active" : payout.status === "pending" ? "pill-unpaid" : "text-xs font-bold text-red"}>
+                    <span
+                      className={
+                        payout.status === "paid"
+                          ? "pill-active"
+                          : payout.status === "pending"
+                            ? "pill-unpaid"
+                            : "text-xs font-bold text-red"
+                      }
+                    >
                       {payout.status.toUpperCase()}
                     </span>
                   </div>
                 </div>
                 <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-                  <p><span className="text-[#8b95a7]">Method:</span> {payout.accountType}</p>
-                  <p><span className="text-[#8b95a7]">Bank/provider:</span> {payout.institution}</p>
-                  <p><span className="text-[#8b95a7]">Account name:</span> {payout.accountName}</p>
-                  <p><span className="text-[#8b95a7]">Account number:</span> {payout.accountNumber}</p>
-                  <p><span className="text-[#8b95a7]">Earnings date:</span> {payout.earningDate.startsWith("20") ? payout.earningDate : "Earlier request"}</p>
+                  <p>
+                    <span className="text-[#8b95a7]">Method:</span> {payout.accountType}
+                  </p>
+                  <p>
+                    <span className="text-[#8b95a7]">Bank/provider:</span> {payout.institution}
+                  </p>
+                  <p>
+                    <span className="text-[#8b95a7]">Account name:</span> {payout.accountName}
+                  </p>
+                  <p>
+                    <span className="text-[#8b95a7]">Account number:</span> {payout.accountNumber}
+                  </p>
+                  <p>
+                    <span className="text-[#8b95a7]">Earnings date:</span>{" "}
+                    {payout.earningDate.startsWith("20") ? payout.earningDate : "Earlier request"}
+                  </p>
                   <p className="text-xs text-[#8b95a7]">
-                    Requested {payout.requestedAt ? new Date(payout.requestedAt).toLocaleString() : "recently"}
+                    Requested{" "}
+                    {payout.requestedAt
+                      ? new Date(payout.requestedAt).toLocaleString()
+                      : "recently"}
                   </p>
                 </div>
                 <div className="mt-4 rounded-xl border border-white/10 bg-[#111111] p-4">
-                  <p className="text-xs font-extrabold tracking-[0.14em] text-[#9aa3b2]">EARNINGS VERIFICATION</p>
+                  <p className="text-xs font-extrabold tracking-[0.14em] text-[#9aa3b2]">
+                    EARNINGS VERIFICATION
+                  </p>
                   {payout.grossRevenue > 0 ? (
                     <>
                       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                        <PayoutAmount label="TOTAL REVENUE" amount={payout.grossRevenue} currency={payout.currency} />
+                        <PayoutAmount
+                          label="TOTAL REVENUE"
+                          amount={payout.grossRevenue}
+                          currency={payout.currency}
+                        />
                         <PayoutAmount
                           label={`ADMIN SHARE · ${Math.max(0, 100 - payout.commissionPercent)}%`}
                           amount={payout.grossRevenue - payout.netEarnings}
@@ -1072,18 +1487,30 @@ function PartnerPayoutDesk({
                           amount={payout.netEarnings}
                           currency={payout.currency}
                         />
-                        <PayoutAmount label="REQUESTED PAYOUT" amount={payout.amount} currency={payout.currency} />
+                        <PayoutAmount
+                          label="REQUESTED PAYOUT"
+                          amount={payout.amount}
+                          currency={payout.currency}
+                        />
                       </div>
                       <p className="mt-3 text-xs text-[#8b95a7]">
                         {formatPayoutAmount(payout.grossRevenue, payout.currency)} revenue ×{" "}
                         {payout.commissionPercent}% partner commission ={" "}
                         {formatPayoutAmount(payout.netEarnings, payout.currency)} partner earnings (
-                        {formatPayoutAmount(Math.max(0, payout.grossRevenue - payout.netEarnings), payout.currency)} admin share).
-                        {payout.amount > payout.netEarnings ? " Requested amount exceeds net earnings." : ""}
+                        {formatPayoutAmount(
+                          Math.max(0, payout.grossRevenue - payout.netEarnings),
+                          payout.currency,
+                        )}{" "}
+                        admin share).
+                        {payout.amount > payout.netEarnings
+                          ? " Requested amount exceeds net earnings."
+                          : ""}
                       </p>
                     </>
                   ) : (
-                    <p className="mt-2 text-sm text-[#8b95a7]">Revenue breakdown is unavailable for this request.</p>
+                    <p className="mt-2 text-sm text-[#8b95a7]">
+                      Revenue breakdown is unavailable for this request.
+                    </p>
                   )}
                 </div>
                 {payout.status === "pending" ? (
@@ -1139,7 +1566,15 @@ function PayoutAmount({
   );
 }
 
-function CommissionRate({ value, disabled, onSave }: { value: number; disabled: boolean; onSave: (commission: number) => void }) {
+function CommissionRate({
+  value,
+  disabled,
+  onSave,
+}: {
+  value: number;
+  disabled: boolean;
+  onSave: (commission: number) => void;
+}) {
   const [draft, setDraft] = useState(value > 0 ? String(value) : "");
   const [focused, setFocused] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -1227,72 +1662,115 @@ function TransactionHistory({
         </span>
       </div>
       <div className="overflow-x-auto">
-      <div className="min-w-[52rem]">
-      <div className={txCols + " desk-head text-[11px] tracking-[0.14em]"}>
-        <span>DATE</span>
-        <span>MEMBER</span>
-        <span>PACKAGE</span>
-        <span>PAYMENT PROOF</span>
-        <span className="text-center">REFERRED BY</span>
-        <span className="text-center">STATUS</span>
-      </div>
-      {payments.length === 0 ? (
-        <p className="px-4 py-5 text-sm text-[#6b7280]">No payments yet.</p>
-      ) : (
-        payments.map((payment) => {
-          const date = payment.createdAt ? new Date(payment.createdAt) : null;
-          return (
-            <article key={payment.id} className={txCols}>
-              <div className="text-xs leading-4 text-[#6b7280]">
-                <p>{date ? date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—"}</p>
-                <p>{date ? date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : ""}</p>
-              </div>
-              <div className="min-w-0">
-                <p className="truncate font-extrabold">{payment.memberName ?? payment.payerName}</p>
-                <p className="truncate text-sm text-[#6b7280]">{payment.memberEmail ?? "—"}</p>
-              </div>
-              <div className="min-w-0">
-                <p className="font-extrabold">{moneyLabel(payment.amount, payment.country)}</p>
-                <p className="text-sm text-[#6b7280]">{payment.purpose === "activation" ? "Activation" : "15 mins"}</p>
-              </div>
-              <div className="min-w-0">
-                {payment.hasReceipt ? (
-                  <button type="button" disabled={opening === payment.id} onClick={() => void openProof(payment.id)} className="rounded-lg border border-[#86d4a0] px-2 py-1 text-[10px] font-extrabold text-[#7ddea0] disabled:opacity-60">
-                    {opening === payment.id ? "Opening…" : "Open payment"}
-                  </button>
-                ) : payment.payerName ? (
-                  <p className="truncate text-sm font-semibold">{payment.payerName}</p>
-                ) : (
-                  <p className="text-xs text-[#6b7280]">No proof</p>
-                )}
-              </div>
-              <div className="flex justify-center">
-                {payment.referredBy ? (
-                  <span className="max-w-full truncate rounded-full border border-white/10 bg-white/10 px-2 py-1 text-[10px] font-bold">{payment.referredBy}</span>
-                ) : (
-                  <span className="text-xs text-[#9aa3b2]">—</span>
-                )}
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <span className={payment.status === "confirmed" ? "pill-active" : "pill-unpaid"}>
-                  {payment.status === "confirmed" ? "RECEIVED" : payment.status === "rejected" ? "REJECTED" : "PENDING"}
-                </span>
-                {payment.status === "pending" ? (
-                  <>
-                    <button type="button" disabled={busy} onClick={() => onConfirm(payment.id)} className="rounded-full border border-[#86d4a0] px-2 py-1 text-[10px] font-extrabold text-[#128a3e] disabled:opacity-60">
-                      MONEY RECEIVED
-                    </button>
-                    <button type="button" disabled={busy} onClick={() => onReject(payment.id)} className="rounded-full border border-[#f3b4b4] px-2 py-1 text-[10px] font-extrabold text-[#e23b3b] disabled:opacity-60">
-                      × REJECT
-                    </button>
-                  </>
-                ) : null}
-              </div>
-            </article>
-          );
-        })
-      )}
-      </div>
+        <div className="min-w-[52rem]">
+          <div className={txCols + " desk-head text-[11px] tracking-[0.14em]"}>
+            <span>DATE</span>
+            <span>MEMBER</span>
+            <span>PACKAGE</span>
+            <span>PAYMENT PROOF</span>
+            <span className="text-center">REFERRED BY</span>
+            <span className="text-center">STATUS</span>
+          </div>
+          {payments.length === 0 ? (
+            <p className="px-4 py-5 text-sm text-[#6b7280]">No payments yet.</p>
+          ) : (
+            payments.map((payment) => {
+              const date = payment.createdAt ? new Date(payment.createdAt) : null;
+              return (
+                <article key={payment.id} className={txCols}>
+                  <div className="text-xs leading-4 text-[#6b7280]">
+                    <p>
+                      {date
+                        ? date.toLocaleDateString("en-GB", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })
+                        : "—"}
+                    </p>
+                    <p>
+                      {date
+                        ? date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+                        : ""}
+                    </p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate font-extrabold">
+                      {payment.memberName ?? payment.payerName}
+                    </p>
+                    <p className="truncate text-sm text-[#6b7280]">{payment.memberEmail ?? "—"}</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-extrabold">{moneyLabel(payment.amount, payment.country)}</p>
+                    <p className="text-sm text-[#6b7280]">
+                      {payment.purpose === "activation"
+                        ? "Activation"
+                        : payment.purpose === "virtual_credits"
+                          ? `${payment.credits ?? 0} virtual credits`
+                          : "15 mins"}
+                    </p>
+                  </div>
+                  <div className="min-w-0">
+                    {payment.hasReceipt ? (
+                      <button
+                        type="button"
+                        disabled={opening === payment.id}
+                        onClick={() => void openProof(payment.id)}
+                        className="rounded-lg border border-[#86d4a0] px-2 py-1 text-[10px] font-extrabold text-[#7ddea0] disabled:opacity-60"
+                      >
+                        {opening === payment.id ? "Opening…" : "Open payment"}
+                      </button>
+                    ) : payment.payerName ? (
+                      <p className="truncate text-sm font-semibold">{payment.payerName}</p>
+                    ) : (
+                      <p className="text-xs text-[#6b7280]">No proof</p>
+                    )}
+                  </div>
+                  <div className="flex justify-center">
+                    {payment.referredBy ? (
+                      <span className="max-w-full truncate rounded-full border border-white/10 bg-white/10 px-2 py-1 text-[10px] font-bold">
+                        {payment.referredBy}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-[#9aa3b2]">—</span>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-center gap-2">
+                    <span
+                      className={payment.status === "confirmed" ? "pill-active" : "pill-unpaid"}
+                    >
+                      {payment.status === "confirmed"
+                        ? "RECEIVED"
+                        : payment.status === "rejected"
+                          ? "REJECTED"
+                          : "PENDING"}
+                    </span>
+                    {payment.status === "pending" ? (
+                      <>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => onConfirm(payment.id)}
+                          className="rounded-full border border-[#86d4a0] px-2 py-1 text-[10px] font-extrabold text-[#128a3e] disabled:opacity-60"
+                        >
+                          MONEY RECEIVED
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => onReject(payment.id)}
+                          className="rounded-full border border-[#f3b4b4] px-2 py-1 text-[10px] font-extrabold text-[#e23b3b] disabled:opacity-60"
+                        >
+                          × REJECT
+                        </button>
+                      </>
+                    ) : null}
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </div>
       </div>
       {proof ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 px-4" role="dialog">
@@ -1308,7 +1786,12 @@ function TransactionHistory({
             ) : proof.startsWith("data:image/") ? (
               <img src={proof} alt="Payment receipt" className="w-full bg-ink object-contain" />
             ) : (
-              <a href={proof} target="_blank" rel="noreferrer" className="block px-5 pb-5 text-sm font-extrabold text-[#7ddea0]">
+              <a
+                href={proof}
+                target="_blank"
+                rel="noreferrer"
+                className="block px-5 pb-5 text-sm font-extrabold text-[#7ddea0]"
+              >
                 Open the uploaded file
               </a>
             )}
@@ -1355,8 +1838,14 @@ function BlockDesk({
   return (
     <section className="mt-8 overflow-hidden rounded-3xl border border-white/10 bg-[#111111] p-4">
       <h2 className="text-2xl font-black">Block a user</h2>
-      <p className="mt-1 text-sm text-[#8b95a7]">A blocked email can no longer sign in. They stay on the front page with Sign In and Sign Out only.</p>
-      <form onSubmit={(event) => void submit(event)} className="mt-4 flex flex-col gap-3 sm:flex-row">
+      <p className="mt-1 text-sm text-[#8b95a7]">
+        A blocked email can no longer sign in. They stay on the front page with Sign In and Sign Out
+        only.
+      </p>
+      <form
+        onSubmit={(event) => void submit(event)}
+        className="mt-4 flex flex-col gap-3 sm:flex-row"
+      >
         <input
           type="email"
           value={email}
@@ -1365,18 +1854,32 @@ function BlockDesk({
           required
           className="h-12 min-w-0 flex-1 rounded-xl border border-white/15 bg-ink px-3 text-sm outline-none"
         />
-        <button type="submit" disabled={busy} className="h-12 rounded-xl bg-red px-6 text-sm font-extrabold disabled:opacity-60">
+        <button
+          type="submit"
+          disabled={busy}
+          className="h-12 rounded-xl bg-red px-6 text-sm font-extrabold disabled:opacity-60"
+        >
           BLOCK
         </button>
       </form>
       {error ? <p className="mt-3 text-sm font-bold text-[#ff8d8d]">{error}</p> : null}
-      <h3 className="mt-6 text-sm font-extrabold tracking-[0.14em] text-[#8b95a7]">BLOCKED ({rows.length})</h3>
+      <h3 className="mt-6 text-sm font-extrabold tracking-[0.14em] text-[#8b95a7]">
+        BLOCKED ({rows.length})
+      </h3>
       {rows.length === 0 ? <p className="mt-3 text-sm text-[#8b95a7]">No blocked users.</p> : null}
       <ul className="mt-3 grid gap-2">
         {rows.map((row) => (
-          <li key={row.email} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-ink px-3 py-3">
+          <li
+            key={row.email}
+            className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-ink px-3 py-3"
+          >
             <span className="min-w-0 truncate text-sm font-bold">{row.email}</span>
-            <button type="button" disabled={busy} onClick={() => void run(() => unblockUser({ data: { email: row.email } }))} className="shrink-0 rounded-lg border border-white/20 px-3 py-2 text-xs font-extrabold disabled:opacity-60">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void run(() => unblockUser({ data: { email: row.email } }))}
+              className="shrink-0 rounded-lg border border-white/20 px-3 py-2 text-xs font-extrabold disabled:opacity-60"
+            >
               UNBLOCK
             </button>
           </li>
@@ -1390,7 +1893,11 @@ function MemberList({ members }: { members: AdminSnapshot["members"] }) {
   const [query, setQuery] = useState("");
   const needle = query.trim().toLowerCase();
   const shown = needle
-    ? members.filter((member) => [member.name, member.email, member.referredBy ?? ""].some((value) => value.toLowerCase().includes(needle)))
+    ? members.filter((member) =>
+        [member.name, member.email, member.referredBy ?? ""].some((value) =>
+          value.toLowerCase().includes(needle),
+        ),
+      )
     : members;
 
   return (
@@ -1413,7 +1920,9 @@ function MemberList({ members }: { members: AdminSnapshot["members"] }) {
             <span className="text-center">REFERRED BY</span>
           </div>
           {shown.length === 0 ? (
-            <p className="px-4 py-5 text-sm text-[#6b7280]">{members.length === 0 ? "No accounts yet." : "No members match that search."}</p>
+            <p className="px-4 py-5 text-sm text-[#6b7280]">
+              {members.length === 0 ? "No accounts yet." : "No members match that search."}
+            </p>
           ) : (
             shown.map((member) => {
               const date = member.createdAt ? new Date(member.createdAt) : null;
@@ -1424,14 +1933,28 @@ function MemberList({ members }: { members: AdminSnapshot["members"] }) {
                     <p className="truncate text-sm text-[#6b7280]">{member.email}</p>
                   </div>
                   <div className="text-center text-xs leading-4 text-[#6b7280]">
-                    <p>{date ? date.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) : "—"}</p>
+                    <p>
+                      {date
+                        ? date.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })
+                        : "—"}
+                    </p>
                     <p>{date ? `${date.getFullYear()} ·` : ""}</p>
-                    <p>{date ? date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : ""}</p>
+                    <p>
+                      {date
+                        ? date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+                        : ""}
+                    </p>
                   </div>
-                  {member.paid ? <span className="pill-active justify-self-center">ACTIVE</span> : <span className="pill-unpaid justify-self-center">UNPAID</span>}
+                  {member.paid ? (
+                    <span className="pill-active justify-self-center">ACTIVE</span>
+                  ) : (
+                    <span className="pill-unpaid justify-self-center">UNPAID</span>
+                  )}
                   <div className="flex justify-center">
                     {member.referredBy ? (
-                      <span className="max-w-full truncate rounded-full border border-white/10 bg-white/10 px-2 py-1 text-[10px] font-bold">{member.referredBy}</span>
+                      <span className="max-w-full truncate rounded-full border border-white/10 bg-white/10 px-2 py-1 text-[10px] font-bold">
+                        {member.referredBy}
+                      </span>
                     ) : (
                       <span className="text-xs text-[#9aa3b2]">—</span>
                     )}
@@ -1472,24 +1995,44 @@ function TestimonyDesk({
         <h2 className="text-xs font-extrabold tracking-[0.16em]">TESTIMONIES</h2>
       </div>
       {rows.length === 0 ? (
-        <p className="border-t border-white/10 px-4 py-6 text-sm text-[#8b95a7]">No testimonies yet.</p>
+        <p className="border-t border-white/10 px-4 py-6 text-sm text-[#8b95a7]">
+          No testimonies yet.
+        </p>
       ) : (
         rows.map((row) => (
-          <article key={row.id} className="flex flex-row items-center gap-3 border-t border-[#333] px-4 py-4">
+          <article
+            key={row.id}
+            className="flex flex-row items-center gap-3 border-t border-[#333] px-4 py-4"
+          >
             <div className="min-w-0 flex-1">
               <p className="font-extrabold">
-                {row.name} <span className="text-sm font-semibold text-[#8b95a7]">{row.place}</span> <span className="text-gold">{"★".repeat(row.stars)}</span>
+                {row.name} <span className="text-sm font-semibold text-[#8b95a7]">{row.place}</span>{" "}
+                <span className="text-gold">{"★".repeat(row.stars)}</span>
               </p>
               <p className="mt-1 text-sm text-white/80">{row.text}</p>
-              <span className={row.status === "approved" ? "pill-active mt-2" : "pill-unpaid mt-2"}>{row.status === "approved" ? "ACTIVE" : "UNPAID"}</span>
+              <span className={row.status === "approved" ? "pill-active mt-2" : "pill-unpaid mt-2"}>
+                {row.status === "approved" ? "ACTIVE" : "UNPAID"}
+              </span>
             </div>
             <div className="flex shrink-0 gap-2">
               {row.status === "pending" ? (
-                <button type="button" disabled={busy} onClick={() => void run(setTestimonyStatus({ data: { id: row.id, status: "approved" } }))} className="h-8 rounded-lg bg-red px-3 text-[10px] font-extrabold text-white disabled:opacity-60">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() =>
+                    void run(setTestimonyStatus({ data: { id: row.id, status: "approved" } }))
+                  }
+                  className="h-8 rounded-lg bg-red px-3 text-[10px] font-extrabold text-white disabled:opacity-60"
+                >
                   APPROVE
                 </button>
               ) : null}
-              <button type="button" disabled={busy} onClick={() => void run(deleteTestimony({ data: { id: row.id } }))} className="h-8 rounded-lg border border-red/80 px-3 text-[10px] font-extrabold text-red disabled:opacity-60">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void run(deleteTestimony({ data: { id: row.id } }))}
+                className="h-8 rounded-lg border border-red/80 px-3 text-[10px] font-extrabold text-red disabled:opacity-60"
+              >
                 DELETE
               </button>
             </div>
@@ -1500,7 +2043,13 @@ function TestimonyDesk({
   );
 }
 
-function WeekRevenue({ payments, country }: { payments: AdminSnapshot["payments"]; country: "Ghana" | "Nigeria" }) {
+function WeekRevenue({
+  payments,
+  country,
+}: {
+  payments: AdminSnapshot["payments"];
+  country: "Ghana" | "Nigeria";
+}) {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), 30000);
@@ -1510,27 +2059,46 @@ function WeekRevenue({ payments, country }: { payments: AdminSnapshot["payments"
   const todayKey = dayKeyInZone(now, timeZone);
   const rows = Array.from({ length: 7 }, (_, index) => {
     const key = shiftDayKey(todayKey, index - 6, timeZone);
-    const approved = payments.filter((payment) => payment.status === "confirmed" && payment.countsRevenue && payment.confirmedAt && dayKeyInZone(payment.confirmedAt, timeZone) === key);
-    const ghana = approved.filter((payment) => !isNairaPayment(payment.amount, payment.country)).reduce((sum, payment) => sum + payment.amount, 0);
-    const nigeria = approved.filter((payment) => isNairaPayment(payment.amount, payment.country)).reduce((sum, payment) => sum + payment.amount, 0);
+    const approved = payments.filter(
+      (payment) =>
+        payment.status === "confirmed" &&
+        payment.countsRevenue &&
+        payment.confirmedAt &&
+        dayKeyInZone(payment.confirmedAt, timeZone) === key,
+    );
+    const ghana = approved
+      .filter((payment) => !isNairaPayment(payment.amount, payment.country))
+      .reduce((sum, payment) => sum + payment.amount, 0);
+    const nigeria = approved
+      .filter((payment) => isNairaPayment(payment.amount, payment.country))
+      .reduce((sum, payment) => sum + payment.amount, 0);
     return {
       key,
       label: liveDayLabel(key, timeZone),
       today: key === todayKey,
-      text: country === "Ghana" ? `GHS ${ghana.toLocaleString("en-GH")}` : `₦${nigeria.toLocaleString("en-NG")}`,
+      text:
+        country === "Ghana"
+          ? `GHS ${ghana.toLocaleString("en-GH")}`
+          : `₦${nigeria.toLocaleString("en-NG")}`,
     };
   });
   return (
     <section className="mt-4 overflow-hidden rounded-3xl border border-white/10 bg-[#111111]">
       <div className="flex items-center gap-3 px-5 py-5">
         <h2 className="text-lg font-black">Daily Revenue</h2>
-        <span className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] font-bold text-[#9aa3b2]">{country}</span>
-        <span className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] font-bold text-[#9aa3b2]">{liveDayLabel(todayKey, timeZone)}</span>
+        <span className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] font-bold text-[#9aa3b2]">
+          {country}
+        </span>
+        <span className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] font-bold text-[#9aa3b2]">
+          {liveDayLabel(todayKey, timeZone)}
+        </span>
       </div>
       <ul>
         {rows.map((row) => (
           <li key={country + row.key} className="week-row desk-row grid-cols-[2fr_1fr] text-sm">
-            <span className={row.today ? "font-extrabold text-red" : "font-bold text-[#9aa3b2]"}>{row.label}</span>
+            <span className={row.today ? "font-extrabold text-red" : "font-bold text-[#9aa3b2]"}>
+              {row.label}
+            </span>
             <span className="text-[#8b95a7]">{row.text}</span>
           </li>
         ))}

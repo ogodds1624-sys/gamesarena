@@ -74,10 +74,10 @@ export function AdminPricing({
 
   return (
     <section className="mt-6 rounded-3xl border border-white/10 bg-[#111111] px-4 py-5">
-      <h2 className="text-lg font-black">Activation fees &amp; session packages</h2>
+      <h2 className="text-lg font-black">Session packages</h2>
       <p className="mt-2 text-sm text-[#9aa3b2]">
-        Saved prices and minutes update the customer package menus and checkout. Existing purchases
-        keep their original price and duration.
+        One-time activation is required for both games. Saved package prices and minutes update
+        customer menus and checkout; existing purchases keep their original price and duration.
       </p>
       <form className="mt-5" onSubmit={(event) => void submit(event)}>
         <fieldset disabled={busy} className="grid gap-5 disabled:opacity-60 md:grid-cols-2">
@@ -88,8 +88,8 @@ export function AdminPricing({
                 <h3 className="font-extrabold">
                   {country} ({currency})
                 </h3>
-                <label className="mt-4 block text-sm font-bold">
-                  One-time activation fee ({currency})
+                <label className="mt-4 block text-xs font-bold text-[#9aa3b2]">
+                  Activation fee ({currency})
                   <input
                     required
                     type="number"
@@ -106,7 +106,7 @@ export function AdminPricing({
                         [country]: { ...current[country], activationFee: value },
                       }));
                     }}
-                    className="mt-2 h-11 w-full rounded-lg border border-white/15 bg-ink px-3 outline-none"
+                    className="mt-2 h-11 w-full rounded-lg border border-white/15 bg-ink px-3 text-sm text-white outline-none"
                   />
                 </label>
                 {form[country].packages.map((pack) => (

@@ -4,6 +4,7 @@ import type { Sql } from "@/lib/db";
 import { isNairaAmount } from "@/lib/desk-session";
 import type { PaymentPurpose } from "@/lib/activation";
 import { validatePricing, validatePaymentQuote, type PricingSettings } from "@/lib/pricing";
+import { validateVirtualCreditPurchase } from "@/lib/virtual-credits";
 import {
   adminEarnings,
   availablePartnerEarnings,
@@ -31,6 +32,7 @@ export type AdminPayment = {
   payerName: string;
   amount: number;
   minutes: number | null;
+  credits: number | null;
   status: "pending" | "confirmed" | "rejected";
   createdAt: string;
   memberName: string | null;
@@ -231,8 +233,14 @@ export function isNairaPayment(amount: number, country: string | null | undefine
 export function liveDayLabel(key: string, timeZone: string) {
   const [year, month, day] = key.split("-").map(Number);
   const date = new Date(Date.UTC(year, (month || 1) - 1, day || 1, 12));
-  const weekday = new Intl.DateTimeFormat("en-GB", { timeZone, weekday: "short" }).format(date).replace(".", "").toUpperCase();
-  const monthName = new Intl.DateTimeFormat("en-GB", { timeZone, month: "short" }).format(date).replace(".", "").toUpperCase();
+  const weekday = new Intl.DateTimeFormat("en-GB", { timeZone, weekday: "short" })
+    .format(date)
+    .replace(".", "")
+    .toUpperCase();
+  const monthName = new Intl.DateTimeFormat("en-GB", { timeZone, month: "short" })
+    .format(date)
+    .replace(".", "")
+    .toUpperCase();
   return `${weekday} ${day} ${monthName}`;
 }
 
@@ -273,6 +281,7 @@ async function ensurePayments(sql: Sql) {
     await sql`alter table payments add column if not exists receipt text`;
     await sql`alter table payments add column if not exists counts_revenue boolean default true`;
     await sql`alter table payments add column if not exists confirmed_at timestamptz`;
+    await sql`alter table payments add column if not exists virtual_credits integer`;
     await sql`update payments set counts_revenue = true where counts_revenue is null`;
     await sql`update payments set confirmed_at = created_at where status = 'confirmed' and confirmed_at is null`;
     await sql`drop table if exists auto_approved_emails`;
@@ -381,26 +390,146 @@ async function ensurePayments(sql: Sql) {
     `;
     await sql`alter table testimonies add column if not exists place text not null default ''`;
     const providedTestimonies = [
-      ["seed-gh-kwame", "Kwame Mensah", "Accra, Ghana", "The cash-out window was clear and I closed the round on time.", 5],
-      ["seed-ng-chinedu", "Chinedu Okafor", "Lagos, Nigeria", "The predicted window showed before the climb, so I cashed out calmly.", 5],
-      ["seed-gh-ama", "Ama Serwaa", "Kumasi, Ghana", "I check the desk before every session. The signal is easy to follow.", 5],
-      ["seed-ng-amina", "Amina Bello", "Abuja, Nigeria", "Clear signals, and support answered when I asked about my session.", 4],
-      ["seed-gh-kofi", "Kofi Asante", "Tema, Ghana", "Session time matched the package I bought. Smooth from start to finish.", 5],
-      ["seed-ng-tunde", "Tunde Adeyemi", "Ibadan, Nigeria", "I bought session time and used it the same day. The desk stayed live.", 5],
-      ["seed-gh-akosua", "Akosua Boateng", "Takoradi, Ghana", "I waited for the safer window and it lined up. Very useful on my phone.", 4],
-      ["seed-ng-ngozi", "Ngozi Eze", "Enugu, Nigeria", "The rounds are easier to follow now. I come back to the desk every evening.", 5],
-      ["seed-gh-yaw", "Yaw Owusu", "Tamale, Ghana", "Simple to use on my phone. The live round felt easier to read.", 5],
-      ["seed-ng-ibrahim", "Ibrahim Musa", "Kano, Nigeria", "I open the desk, watch the window, and play only when it looks right.", 5],
-      ["seed-gh-esi", "Esi Appiah", "Cape Coast, Ghana", "Bought the 10 minute session and it ran exactly as listed. Happy with it.", 5],
-      ["seed-gh-nana", "Nana Yeboah", "Sunyani, Ghana", "The window showed up in time and I cashed out safely. Will buy again.", 4],
-      ["seed-gh-abena", "Abena Frimpong", "Koforidua, Ghana", "Easy to pay with MoMo and my session opened soon after approval.", 5],
-      ["seed-gh-kojo", "Kojo Badu", "Ho, Ghana", "I like that the timer is clear. I always know how long I have left.", 4],
-      ["seed-gh-efua", "Efua Quaye", "Tema, Ghana", "Support replied fast and the desk worked well on my phone.", 5],
-      ["seed-gh-yaa", "Yaa Danquah", "Wa, Ghana", "Simple layout and the signals are easy to read. Good value.", 5],
-      ["seed-gh-kwesi", "Kwesi Ofori", "Accra, Ghana", "Third time buying. The session started right after my payment cleared.", 5],
-      ["seed-gh-adwoa", "Adwoa Sarpong", "Kumasi, Ghana", "Clean and quick. The 20 minute session gave me plenty of time.", 4],
-      ["seed-ng-emeka", "Emeka Nwosu", "Port Harcourt, Nigeria", "Bank transfer was easy and my session was opened once confirmed.", 5],
-      ["seed-ng-fatima", "Fatima Yusuf", "Kaduna, Nigeria", "The signals are clear and the timer is easy to follow on my phone.", 4],
+      [
+        "seed-gh-kwame",
+        "Kwame Mensah",
+        "Accra, Ghana",
+        "The cash-out window was clear and I closed the round on time.",
+        5,
+      ],
+      [
+        "seed-ng-chinedu",
+        "Chinedu Okafor",
+        "Lagos, Nigeria",
+        "The predicted window showed before the climb, so I cashed out calmly.",
+        5,
+      ],
+      [
+        "seed-gh-ama",
+        "Ama Serwaa",
+        "Kumasi, Ghana",
+        "I check the desk before every session. The signal is easy to follow.",
+        5,
+      ],
+      [
+        "seed-ng-amina",
+        "Amina Bello",
+        "Abuja, Nigeria",
+        "Clear signals, and support answered when I asked about my session.",
+        4,
+      ],
+      [
+        "seed-gh-kofi",
+        "Kofi Asante",
+        "Tema, Ghana",
+        "Session time matched the package I bought. Smooth from start to finish.",
+        5,
+      ],
+      [
+        "seed-ng-tunde",
+        "Tunde Adeyemi",
+        "Ibadan, Nigeria",
+        "I bought session time and used it the same day. The desk stayed live.",
+        5,
+      ],
+      [
+        "seed-gh-akosua",
+        "Akosua Boateng",
+        "Takoradi, Ghana",
+        "I waited for the safer window and it lined up. Very useful on my phone.",
+        4,
+      ],
+      [
+        "seed-ng-ngozi",
+        "Ngozi Eze",
+        "Enugu, Nigeria",
+        "The rounds are easier to follow now. I come back to the desk every evening.",
+        5,
+      ],
+      [
+        "seed-gh-yaw",
+        "Yaw Owusu",
+        "Tamale, Ghana",
+        "Simple to use on my phone. The live round felt easier to read.",
+        5,
+      ],
+      [
+        "seed-ng-ibrahim",
+        "Ibrahim Musa",
+        "Kano, Nigeria",
+        "I open the desk, watch the window, and play only when it looks right.",
+        5,
+      ],
+      [
+        "seed-gh-esi",
+        "Esi Appiah",
+        "Cape Coast, Ghana",
+        "Bought the 10 minute session and it ran exactly as listed. Happy with it.",
+        5,
+      ],
+      [
+        "seed-gh-nana",
+        "Nana Yeboah",
+        "Sunyani, Ghana",
+        "The window showed up in time and I cashed out safely. Will buy again.",
+        4,
+      ],
+      [
+        "seed-gh-abena",
+        "Abena Frimpong",
+        "Koforidua, Ghana",
+        "Easy to pay with MoMo and my session opened soon after approval.",
+        5,
+      ],
+      [
+        "seed-gh-kojo",
+        "Kojo Badu",
+        "Ho, Ghana",
+        "I like that the timer is clear. I always know how long I have left.",
+        4,
+      ],
+      [
+        "seed-gh-efua",
+        "Efua Quaye",
+        "Tema, Ghana",
+        "Support replied fast and the desk worked well on my phone.",
+        5,
+      ],
+      [
+        "seed-gh-yaa",
+        "Yaa Danquah",
+        "Wa, Ghana",
+        "Simple layout and the signals are easy to read. Good value.",
+        5,
+      ],
+      [
+        "seed-gh-kwesi",
+        "Kwesi Ofori",
+        "Accra, Ghana",
+        "Third time buying. The session started right after my payment cleared.",
+        5,
+      ],
+      [
+        "seed-gh-adwoa",
+        "Adwoa Sarpong",
+        "Kumasi, Ghana",
+        "Clean and quick. The 20 minute session gave me plenty of time.",
+        4,
+      ],
+      [
+        "seed-ng-emeka",
+        "Emeka Nwosu",
+        "Port Harcourt, Nigeria",
+        "Bank transfer was easy and my session was opened once confirmed.",
+        5,
+      ],
+      [
+        "seed-ng-fatima",
+        "Fatima Yusuf",
+        "Kaduna, Nigeria",
+        "The signals are clear and the timer is easy to follow on my phone.",
+        4,
+      ],
     ] as const;
     for (let index = 0; index < providedTestimonies.length; index += 1) {
       const [id, name, place, body, stars] = providedTestimonies[index];
@@ -490,7 +619,13 @@ async function ensurePayments(sql: Sql) {
 
 async function readSnapshot(sql: Sql): Promise<AdminSnapshot> {
   await ensurePayments(sql);
-  const rows = await sql<{ id: string; name: string; email: string; createdAt: string | Date; is_test_account: boolean }>`
+  const rows = await sql<{
+    id: string;
+    name: string;
+    email: string;
+    createdAt: string | Date;
+    is_test_account: boolean;
+  }>`
     select user_id as id, name, email, registered_at as "createdAt",
       exists (select 1 from test_accounts t where t.email = lower(trim(registered_users.email))) as is_test_account
     from registered_users
@@ -503,7 +638,9 @@ async function readSnapshot(sql: Sql): Promise<AdminSnapshot> {
     select user_id from payments where status = 'confirmed' and user_id is not null
   `;
   const referredBy = new Map(referralRows.map((row) => [row.user_id, row.referred_by]));
-  const paidIds = new Set(paidRows.map((row) => row.user_id).filter((id): id is string => Boolean(id)));
+  const paidIds = new Set(
+    paidRows.map((row) => row.user_id).filter((id): id is string => Boolean(id)),
+  );
   const members: AdminMember[] = rows.map((row) => {
     const created = row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt);
     return {
@@ -522,6 +659,7 @@ async function readSnapshot(sql: Sql): Promise<AdminSnapshot> {
     purpose: PaymentPurpose;
     amount: number | string;
     session_minutes: number | null;
+    virtual_credits: number | null;
     status: string;
     created_at: string | Date;
     member_name: string | null;
@@ -533,7 +671,7 @@ async function readSnapshot(sql: Sql): Promise<AdminSnapshot> {
     referred_by: string | null;
     country: string | null;
   }>`
-    select p.id, p.purpose, p.payer_name, p.amount, p.session_minutes, p.status, p.created_at, u.name as member_name, u.email as member_email,
+    select p.id, p.purpose, p.payer_name, p.amount, p.session_minutes, p.virtual_credits, p.status, p.created_at, u.name as member_name, u.email as member_email,
       (p.receipt is not null and p.receipt <> '') as has_receipt,
       p.counts_revenue,
       exists (select 1 from test_accounts t where t.email = lower(trim(u.email))) as is_test_account,
@@ -548,7 +686,8 @@ async function readSnapshot(sql: Sql): Promise<AdminSnapshot> {
   `;
   const payments: AdminPayment[] = paymentRows.map((row) => {
     const created = row.created_at instanceof Date ? row.created_at : new Date(row.created_at);
-    const confirmed = row.confirmed_at instanceof Date ? row.confirmed_at : new Date(row.confirmed_at ?? "");
+    const confirmed =
+      row.confirmed_at instanceof Date ? row.confirmed_at : new Date(row.confirmed_at ?? "");
     const status = row.status === "confirmed" || row.status === "rejected" ? row.status : "pending";
     return {
       id: row.id,
@@ -556,19 +695,29 @@ async function readSnapshot(sql: Sql): Promise<AdminSnapshot> {
       payerName: row.payer_name,
       amount: Number(row.amount),
       minutes: row.session_minutes,
+      credits: row.virtual_credits,
       status,
       createdAt: Number.isNaN(created.getTime()) ? "" : created.toISOString(),
       memberName: row.member_name,
       memberEmail: row.member_email,
       hasReceipt: row.has_receipt === true || row.has_receipt === "t" || row.has_receipt === "true",
-      countsRevenue: status === "confirmed" && !(row.counts_revenue === false || row.counts_revenue === "f" || row.counts_revenue === "false"),
+      countsRevenue:
+        status === "confirmed" &&
+        !(
+          row.counts_revenue === false ||
+          row.counts_revenue === "f" ||
+          row.counts_revenue === "false"
+        ),
       isTestAccount: row.is_test_account,
-      confirmedAt: status !== "confirmed" || Number.isNaN(confirmed.getTime()) ? "" : confirmed.toISOString(),
+      confirmedAt:
+        status !== "confirmed" || Number.isNaN(confirmed.getTime()) ? "" : confirmed.toISOString(),
       referredBy: row.referred_by,
       country: row.country === "Nigeria" ? "Nigeria" : row.country === "Ghana" ? "Ghana" : null,
     };
   });
-  const confirmedPayments = payments.filter((payment) => payment.status === "confirmed" && payment.countsRevenue);
+  const confirmedPayments = payments.filter(
+    (payment) => payment.status === "confirmed" && payment.countsRevenue,
+  );
   const partnerRows = await sql<{
     id: string;
     name: string;
@@ -580,7 +729,11 @@ async function readSnapshot(sql: Sql): Promise<AdminSnapshot> {
   const referralCounts = await sql<{ referred_by: string; total: number | string }>`
     select lower(referred_by) as referred_by, count(*) as total from referrals group by lower(referred_by)
   `;
-  const referralRevenue = await sql<{ referred_by: string; ghs: number | string; ngn: number | string }>`
+  const referralRevenue = await sql<{
+    referred_by: string;
+    ghs: number | string;
+    ngn: number | string;
+  }>`
     select lower(partner.code) as referred_by,
       coalesce(sum(case when
         coalesce(p.country, c.country) = 'Nigeria'
@@ -616,7 +769,8 @@ async function readSnapshot(sql: Sql): Promise<AdminSnapshot> {
   const partners: AdminPartner[] = partnerRows.map((row) => {
     const code = row.code.toLowerCase();
     const name = row.name.toLowerCase();
-    const extra = (map: Map<string, number>) => (map.get(code) ?? 0) + (code === name ? 0 : (map.get(name) ?? 0));
+    const extra = (map: Map<string, number>) =>
+      (map.get(code) ?? 0) + (code === name ? 0 : (map.get(name) ?? 0));
     return {
       id: row.id,
       name: row.name,
@@ -660,7 +814,8 @@ async function readSnapshot(sql: Sql): Promise<AdminSnapshot> {
     order by payout.requested_at desc
   `;
   const payouts: PartnerPayout[] = payoutRows.map((row) => {
-    const requestedAt = row.requested_at instanceof Date ? row.requested_at : new Date(row.requested_at);
+    const requestedAt =
+      row.requested_at instanceof Date ? row.requested_at : new Date(row.requested_at);
     return {
       id: row.id,
       partnerId: row.partner_id,
@@ -709,7 +864,9 @@ async function readSnapshot(sql: Sql): Promise<AdminSnapshot> {
   const { readPricing } = await import("@/lib/pricing.server");
   const pricing = await readPricing(sql);
   const todayKey = accraDayKey(new Date());
-  const today = members.filter((member) => member.createdAt && accraDayKey(member.createdAt) === todayKey).length;
+  const today = members.filter(
+    (member) => member.createdAt && accraDayKey(member.createdAt) === todayKey,
+  ).length;
   const testimonyRows = await sql<{
     id: string;
     name: string;
@@ -733,10 +890,16 @@ async function readSnapshot(sql: Sql): Promise<AdminSnapshot> {
   });
   const { ensureBlockedTable } = await import("@/lib/blocked-users.server");
   await ensureBlockedTable(sql);
-  const blockedRows = await sql<{ email: string; created_at: string | Date }>`select email, created_at from blocked_emails order by created_at desc`;
+  const blockedRows = await sql<{
+    email: string;
+    created_at: string | Date;
+  }>`select email, created_at from blocked_emails order by created_at desc`;
   const blocked = blockedRows.map((row) => ({
     email: row.email,
-    createdAt: (row.created_at instanceof Date ? row.created_at : new Date(row.created_at)).toISOString(),
+    createdAt: (row.created_at instanceof Date
+      ? row.created_at
+      : new Date(row.created_at)
+    ).toISOString(),
   }));
   return {
     members,
@@ -757,8 +920,11 @@ async function readSnapshot(sql: Sql): Promise<AdminSnapshot> {
 export const blockUser = createServerFn({ method: "POST" })
   .middleware([adminAuthMiddleware])
   .inputValidator((data: { email: string }) => {
-    const email = String(data?.email ?? "").trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) throw new Error("Enter a valid email address.");
+    const email = String(data?.email ?? "")
+      .trim()
+      .toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254)
+      throw new Error("Enter a valid email address.");
     return { email };
   })
   .handler(async ({ data }) => {
@@ -773,7 +939,11 @@ export const blockUser = createServerFn({ method: "POST" })
 
 export const unblockUser = createServerFn({ method: "POST" })
   .middleware([adminAuthMiddleware])
-  .inputValidator((data: { email: string }) => ({ email: String(data?.email ?? "").trim().toLowerCase() }))
+  .inputValidator((data: { email: string }) => ({
+    email: String(data?.email ?? "")
+      .trim()
+      .toLowerCase(),
+  }))
   .handler(async ({ data }) => {
     const { getSql } = await import("@/lib/db");
     const { ensureBlockedTable } = await import("@/lib/blocked-users.server");
@@ -808,7 +978,8 @@ export const submitTestimony = createServerFn({ method: "POST" })
     if (name.length < 2) throw new Error("Enter your name.");
     if (place.length < 2) throw new Error("Enter your location.");
     if (text.length < 8) throw new Error("Write a short testimony.");
-    if (!Number.isInteger(stars) || stars < 1 || stars > 5) throw new Error("Choose a star rating.");
+    if (!Number.isInteger(stars) || stars < 1 || stars > 5)
+      throw new Error("Choose a star rating.");
     return { name: name.slice(0, 60), place: place.slice(0, 60), text: text.slice(0, 280), stars };
   })
   .handler(async ({ data }) => {
@@ -906,7 +1077,9 @@ export const getStorefront = createServerFn({ method: "GET" })
       wallets: checkout.momo ? checkout.wallets.filter((wallet) => wallet.number) : [],
       banks: checkout.bank ? checkout.banks.filter((account) => account.number) : [],
       nigeriaOn: checkout.nigeriaOn,
-      nigeriaAccounts: checkout.nigeriaOn ? checkout.nigeriaBanks.filter((account) => account.number) : [],
+      nigeriaAccounts: checkout.nigeriaOn
+        ? checkout.nigeriaBanks.filter((account) => account.number)
+        : [],
       rates,
     };
   });
@@ -923,12 +1096,98 @@ export const getPaymentStatus = createServerFn({ method: "POST" })
     if (!user) throw new Error("Sign in to check your payment.");
     const sql = await getSql();
     await ensurePayments(sql);
-    const rows = await sql<{ status: string; purpose: PaymentPurpose; amount: number; session_minutes: number | null }>`
-      select status, purpose, amount, session_minutes from payments where id = ${data.id} and user_id = ${user.id}
+    const rows = await sql<{
+      status: string;
+      purpose: PaymentPurpose;
+      amount: number;
+      session_minutes: number | null;
+      virtual_credits: number | null;
+    }>`
+      select status, purpose, amount, session_minutes, virtual_credits from payments where id = ${data.id} and user_id = ${user.id}
     `;
     if (!rows[0]) throw new Error("This payment could not be found for your account.");
     const status = rows[0].status;
-    return { status: status === "confirmed" || status === "rejected" ? status : "pending", purpose: rows[0].purpose, amount: Number(rows[0].amount), minutes: rows[0].session_minutes };
+    return {
+      status: status === "confirmed" || status === "rejected" ? status : "pending",
+      purpose: rows[0].purpose,
+      amount: Number(rows[0].amount),
+      minutes: rows[0].session_minutes,
+      credits: rows[0].virtual_credits,
+    };
+  });
+
+export const getVirtualScanAccess = createServerFn({ method: "GET" }).handler(async () => {
+  const { getSql } = await import("@/lib/db");
+  const { getSessionUser } = await import("@/lib/auth/verify.server");
+  const user = await getSessionUser();
+  if (!user) throw new Error("Sign in to check your Instant Virtual approval.");
+  const sql = await getSql();
+  await ensurePayments(sql);
+  const approved = await sql<{ id: string }>`
+    select id from payments where user_id = ${user.id}
+      and purpose = 'virtual_credits' and status = 'confirmed' limit 1
+  `;
+  const activation = await sql<{ id: string }>`
+    select id from payments where user_id = ${user.id}
+      and purpose = 'activation' and status = 'confirmed' limit 1
+  `;
+  const pending = await sql<{ id: string; amount: number; credits: number }>`
+    select id, amount, virtual_credits as credits from payments where user_id = ${user.id}
+      and purpose = 'virtual_credits' and status = 'pending'
+    order by created_at desc limit 1
+  `;
+  return {
+    approved: approved.length > 0 && activation.length > 0,
+    pending: pending[0]
+      ? { id: pending[0].id, amount: Number(pending[0].amount), credits: pending[0].credits }
+      : null,
+  };
+});
+
+export const getVirtualCreditBalance = createServerFn({ method: "GET" }).handler(async () => {
+  const { getSql } = await import("@/lib/db");
+  const { getSessionUser } = await import("@/lib/auth/verify.server");
+  const user = await getSessionUser();
+  if (!user) throw new Error("Sign in to check your Instant Virtual credits.");
+  const sql = await getSql();
+  await ensurePayments(sql);
+  const rows = await sql<{ balance: number }>`
+    select balance from virtual_credit_wallets where user_id = ${user.id}
+  `;
+  return { balance: Number(rows[0]?.balance ?? 0) };
+});
+
+export const spendVirtualCredit = createServerFn({ method: "POST" })
+  .inputValidator((data: { eventId: string }) => {
+    if (
+      !data?.eventId ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        data.eventId,
+      )
+    ) {
+      throw new Error("Could not start the virtual game. Try again.");
+    }
+    return { eventId: data.eventId };
+  })
+  .handler(async ({ data }) => {
+    const { getSql } = await import("@/lib/db");
+    const { getSessionUser } = await import("@/lib/auth/verify.server");
+    const user = await getSessionUser();
+    if (!user) throw new Error("Sign in to play Instant Virtual.");
+    const sql = await getSql();
+    await ensurePayments(sql);
+    const link = await getSportyLink();
+    if (!link.signedIn || !link.linked || !link.activated) {
+      throw new Error("Complete account setup before playing Instant Virtual.");
+    }
+    if (link.country !== "Ghana" && link.country !== "Nigeria") {
+      throw new Error("Choose Ghana or Nigeria before playing Instant Virtual.");
+    }
+    const rows = await sql<{ spent: boolean; balance: number }>`
+      select * from spend_virtual_credit(${user.id}, ${data.eventId})
+    `;
+    if (!rows[0]) throw new Error("Could not update your Instant Virtual balance. Try again.");
+    return { spent: rows[0].spent, balance: Number(rows[0].balance) };
   });
 
 export const hasPaidAccess = createServerFn({ method: "GET" }).handler(async () => {
@@ -938,29 +1197,64 @@ export const hasPaidAccess = createServerFn({ method: "GET" }).handler(async () 
   if (!user) return { paid: false };
   const sql = await getSql();
   await ensurePayments(sql);
+  const link = await getSportyLink();
+  if (!link.activated) return { paid: false };
   const rows = await sql<{ id: string }>`
     select id from payments where user_id = ${user.id} and status = 'confirmed' and purpose = 'session'
-      and exists (select 1 from payments a where a.user_id = ${user.id} and a.purpose = 'activation' and a.status = 'confirmed')
     limit 1
   `;
   return { paid: rows.length > 0 };
 });
 
 export const recordPayment = createServerFn({ method: "POST" })
-  .inputValidator((data: { name: string; amount: number; receipt?: string; referredBy?: string; purpose?: PaymentPurpose; packageId?: string; minutes?: number | null }) => {
-    const name = data?.name?.trim() ?? "";
-    const amount = Number(data?.amount);
-    const receipt = typeof data?.receipt === "string" ? data.receipt : "";
-    const referredBy = String(data?.referredBy ?? "").trim().slice(0, 80);
-    if (!receipt && name.length < 3) throw new Error("Attach a screenshot of your payment.");
-    const purpose = data.purpose ?? "session";
-    if (purpose !== "session" && purpose !== "activation") throw new Error("Unknown payment purpose.");
-    if (purpose === "activation" && !receipt) throw new Error("Attach a screenshot of your activation payment.");
-    if (!Number.isInteger(amount) || amount < 1 || amount > 2_147_483_647) throw new Error("Enter a valid payment amount.");
-    if (data.packageId !== undefined && typeof data.packageId !== "string") throw new Error("Unknown package.");
-    if (data.minutes != null && (!Number.isInteger(data.minutes) || data.minutes < 1 || data.minutes > 1440)) throw new Error("Enter valid session minutes.");
-    return { name, amount, receipt, referredBy, purpose, packageId: data.packageId, minutes: data.minutes };
-  })
+  .inputValidator(
+    (data: {
+      name: string;
+      amount: number;
+      receipt?: string;
+      referredBy?: string;
+      purpose?: PaymentPurpose;
+      packageId?: string;
+      minutes?: number | null;
+      credits?: number;
+    }) => {
+      const name = data?.name?.trim() ?? "";
+      const amount = Number(data?.amount);
+      const receipt = typeof data?.receipt === "string" ? data.receipt : "";
+      const referredBy = String(data?.referredBy ?? "")
+        .trim()
+        .slice(0, 80);
+      const purpose = data.purpose ?? "session";
+      if (purpose !== "session" && purpose !== "activation" && purpose !== "virtual_credits")
+        throw new Error("Unknown payment purpose.");
+      if (!receipt && name.length < 3) throw new Error("Attach a screenshot of your payment.");
+      if (!Number.isInteger(amount) || amount < 1 || amount > 2_147_483_647)
+        throw new Error("Enter a valid payment amount.");
+      if (data.packageId !== undefined && typeof data.packageId !== "string")
+        throw new Error("Unknown package.");
+      if (
+        data.minutes != null &&
+        (!Number.isInteger(data.minutes) || data.minutes < 1 || data.minutes > 1440)
+      )
+        throw new Error("Enter valid session minutes.");
+      if (
+        purpose === "virtual_credits" &&
+        (typeof data.credits !== "number" || ![1, 3, 5].includes(data.credits))
+      ) {
+        throw new Error("Choose a valid Instant Virtual credit package.");
+      }
+      return {
+        name,
+        amount,
+        receipt,
+        referredBy,
+        purpose,
+        packageId: data.packageId,
+        minutes: data.minutes,
+        credits: data.credits,
+      };
+    },
+  )
   .handler(async ({ data }) => {
     const { getSql } = await import("@/lib/db");
     const { getSessionUser } = await import("@/lib/auth/verify.server");
@@ -970,17 +1264,21 @@ export const recordPayment = createServerFn({ method: "POST" })
     if (!sessionUser) throw new Error("Sign in before submitting payment.");
     const link = await getSportyLink();
     if (!link.linked || !link.country) throw new Error("Connect your SportyBet number first.");
-    if (data.purpose === "activation") {
-      if (link.activated) throw new Error("Your account is already activated.");
-      const existing = await sql<{ id: string; amount: number; session_minutes: number | null }>`
-        select id, amount, session_minutes from payments where user_id = ${sessionUser.id} and purpose = 'activation' and status = 'pending'
-      `;
-      if (existing[0]) return { ok: true, id: existing[0].id, amount: Number(existing[0].amount), minutes: existing[0].session_minutes };
-    } else if (!link.activated) {
-      throw new Error("Your activation payment must be approved before buying a session.");
+    if (data.purpose !== "activation" && !link.activated) {
+      throw new Error("Complete activation approval before purchasing a package.");
+    }
+    if (data.purpose === "activation" && link.activated) {
+      throw new Error("Your account is already activated.");
     }
     const { readPricing } = await import("@/lib/pricing.server");
-    const quote = validatePaymentQuote(await readPricing(sql), link.country, data);
+    const quote =
+      data.purpose === "virtual_credits"
+        ? {
+            ...validateVirtualCreditPurchase(data.amount, Number(data.credits), link.country),
+            minutes: null,
+            packageId: null,
+          }
+        : validatePaymentQuote(await readPricing(sql), link.country, data);
     let referredBy = "";
     if (sessionUser) {
       const refs = await sql<{ referred_by: string }>`
@@ -1000,19 +1298,24 @@ export const recordPayment = createServerFn({ method: "POST" })
       `;
     }
     const id = crypto.randomUUID();
-    const saved = await sql<{ id: string; amount: number; session_minutes: number | null }>`
-      insert into payments (id, payer_name, amount, status, user_id, referred_by, receipt, purpose, package_id, session_minutes, country)
-      select ${id}, ${data.name}, ${quote.amount}, 'pending', ${sessionUser.id}, ${referredBy}, ${data.receipt}, ${data.purpose}, ${quote.packageId}, ${quote.minutes}, ${link.country}
-      where ${data.purpose} = 'activation' or exists (
-        select 1 from payments a
-        where a.user_id = ${sessionUser.id} and a.purpose = 'activation' and a.status = 'confirmed'
-      )
-      on conflict (user_id) where purpose = 'activation' and status in ('pending', 'confirmed') do update
-      set user_id = excluded.user_id
-      returning id, amount, session_minutes
+    const saved = await sql<{
+      id: string;
+      amount: number;
+      session_minutes: number | null;
+      virtual_credits: number | null;
+    }>`
+      insert into payments (id, payer_name, amount, status, user_id, referred_by, receipt, purpose, package_id, session_minutes, country, virtual_credits)
+      select ${id}, ${data.name}, ${quote.amount}, 'pending', ${sessionUser.id}, ${referredBy}, ${data.receipt}, ${data.purpose}, ${quote.packageId}, ${quote.minutes}, ${link.country}, ${data.purpose === "virtual_credits" ? data.credits : null}
+      returning id, amount, session_minutes, virtual_credits
     `;
-    if (!saved[0]) throw new Error("Your activation payment must be approved before buying a session.");
-    return { ok: true, id: saved[0].id, amount: Number(saved[0].amount), minutes: saved[0].session_minutes };
+    if (!saved[0]) throw new Error("Could not save your payment. Please try again.");
+    return {
+      ok: true,
+      id: saved[0].id,
+      amount: Number(saved[0].amount),
+      minutes: saved[0].session_minutes,
+      credits: saved[0].virtual_credits,
+    };
   });
 
 export const getPaymentProof = createServerFn({ method: "POST" })
@@ -1025,7 +1328,9 @@ export const getPaymentProof = createServerFn({ method: "POST" })
     const { getSql } = await import("@/lib/db");
     const sql = await getSql();
     await ensurePayments(sql);
-    const rows = await sql<{ receipt: string | null }>`select receipt from payments where id = ${data.id}`;
+    const rows = await sql<{
+      receipt: string | null;
+    }>`select receipt from payments where id = ${data.id}`;
     return { receipt: rows[0]?.receipt ?? "" };
   });
 
@@ -1048,14 +1353,17 @@ export const confirmedDeskLogin = createServerFn({ method: "GET" }).handler(asyn
   if (!user) return empty;
   const sql = await getSql();
   await ensurePayments(sql);
+  const link = await getSportyLink();
+  if (!link.activated) return empty;
   await ensureDeskPasses(sql);
   const paid = await sql<{ ok: number }>`
     select 1 as ok from payments where user_id = ${user.id} and status = 'confirmed' and purpose = 'session'
-      and exists (select 1 from payments a where a.user_id = ${user.id} and a.purpose = 'activation' and a.status = 'confirmed')
     limit 1
   `;
   if (paid.length === 0) return empty;
-  const nums = await sql<{ number: string }>`select number from sporty_accounts where user_id = ${user.id} limit 1`;
+  const nums = await sql<{
+    number: string;
+  }>`select number from sporty_accounts where user_id = ${user.id} limit 1`;
   const login = (nums[0]?.number ?? "").replace(/\D/g, "").slice(0, 12);
   const safeLogin = /^\d{4,12}$/.test(login) ? login : "";
   await sql`delete from desk_passes where expires_at <= now()`;
@@ -1132,7 +1440,9 @@ export const reversePayment = createServerFn({ method: "POST" })
   });
 
 export const saveReferral = createServerFn({ method: "POST" })
-  .inputValidator((data: { referredBy?: string }) => ({ referredBy: (data?.referredBy?.trim() ?? "").slice(0, 80) }))
+  .inputValidator((data: { referredBy?: string }) => ({
+    referredBy: (data?.referredBy?.trim() ?? "").slice(0, 80),
+  }))
   .handler(async ({ data }) => {
     if (!data.referredBy) return { ok: true };
     const { getSql } = await import("@/lib/db");
@@ -1216,13 +1526,28 @@ export const getSportyLink = createServerFn({ method: "GET" }).handler(async () 
   const { getSessionUser } = await import("@/lib/auth/verify.server");
   const user = await getSessionUser();
   if (!user) {
-    return { linked: false, country: null as "Ghana" | "Nigeria" | null, locked: false, signedIn: false, completed: false, activated: false, activationPayment: null as { id: string; amount: number } | null };
+    return {
+      linked: false,
+      country: null as "Ghana" | "Nigeria" | null,
+      locked: false,
+      signedIn: false,
+      completed: false,
+      activated: false,
+      activationPayment: null as { id: string; amount: number } | null,
+    };
   }
   const sql = await getSql();
   await ensurePayments(sql);
   const retained = await retainRegisteredProfile(sql, user.id);
-  const countryRows = await sql<{ country: string }>`select country from player_country where user_id = ${user.id}`;
-  const country = countryRows[0]?.country === "Nigeria" ? "Nigeria" : countryRows[0]?.country === "Ghana" ? "Ghana" : null;
+  const countryRows = await sql<{
+    country: string;
+  }>`select country from player_country where user_id = ${user.id}`;
+  const country =
+    countryRows[0]?.country === "Nigeria"
+      ? "Nigeria"
+      : countryRows[0]?.country === "Ghana"
+        ? "Ghana"
+        : null;
   const completedRows = await sql<{ completed: boolean }>`
     select "isCompleted" as completed from "user" where id = ${user.id} limit 1
   `;
@@ -1232,11 +1557,16 @@ export const getSportyLink = createServerFn({ method: "GET" }).handler(async () 
   const activationRows = await sql<{ id: string; amount: number; status: string }>`
     select id, amount, status from payments
     where user_id = ${user.id} and purpose = 'activation' and status in ('pending', 'confirmed')
+    order by (status = 'confirmed') desc, created_at desc
     limit 1
   `;
   const activation = activationRows[0];
   return {
-    linked, country, locked: linked && country != null, signedIn: true, completed,
+    linked,
+    country,
+    locked: linked && country != null,
+    signedIn: true,
+    completed,
     activated: activation?.status === "confirmed",
     activationPayment: activation ? { id: activation.id, amount: Number(activation.amount) } : null,
   };
@@ -1244,7 +1574,8 @@ export const getSportyLink = createServerFn({ method: "GET" }).handler(async () 
 
 export const savePlayerCountry = createServerFn({ method: "POST" })
   .inputValidator((data: { country: string }) => {
-    const country = data?.country === "Nigeria" ? "Nigeria" : data?.country === "Ghana" ? "Ghana" : "";
+    const country =
+      data?.country === "Nigeria" ? "Nigeria" : data?.country === "Ghana" ? "Ghana" : "";
     if (!country) throw new Error("Choose Ghana or Nigeria.");
     return { country: country as "Ghana" | "Nigeria" };
   })
@@ -1255,9 +1586,18 @@ export const savePlayerCountry = createServerFn({ method: "POST" })
     if (!user) throw new Error("Sign in first.");
     const sql = await getSql();
     await ensurePayments(sql);
-    const linked = await sql<{ user_id: string }>`select user_id from sporty_accounts where user_id = ${user.id}`;
-    const existing = await sql<{ country: string }>`select country from player_country where user_id = ${user.id}`;
-    const saved = existing[0]?.country === "Nigeria" ? "Nigeria" : existing[0]?.country === "Ghana" ? "Ghana" : null;
+    const linked = await sql<{
+      user_id: string;
+    }>`select user_id from sporty_accounts where user_id = ${user.id}`;
+    const existing = await sql<{
+      country: string;
+    }>`select country from player_country where user_id = ${user.id}`;
+    const saved =
+      existing[0]?.country === "Nigeria"
+        ? "Nigeria"
+        : existing[0]?.country === "Ghana"
+          ? "Ghana"
+          : null;
     if (linked.length > 0 && saved) return { country: saved, locked: true };
     await sql`
       insert into player_country (user_id, country)
@@ -1274,9 +1614,13 @@ export const abandonUnlinkedAccount = createServerFn({ method: "POST" }).handler
   if (!user || user.id === "dev-user") return { removed: false };
   const sql = await getSql();
   await ensurePayments(sql);
-  const kept = await sql<{ user_id: string }>`select user_id from registered_users where user_id = ${user.id} limit 1`;
+  const kept = await sql<{
+    user_id: string;
+  }>`select user_id from registered_users where user_id = ${user.id} limit 1`;
   if (kept.length > 0) return { removed: false };
-  const linked = await sql<{ user_id: string }>`select user_id from sporty_accounts where user_id = ${user.id}`;
+  const linked = await sql<{
+    user_id: string;
+  }>`select user_id from sporty_accounts where user_id = ${user.id}`;
   if (linked.length > 0) return { removed: false };
   const completedRows = await sql<{ completed: boolean }>`
     select "isCompleted" as completed from "user" where id = ${user.id} limit 1
@@ -1302,8 +1646,11 @@ export const saveSportyLink = createServerFn({ method: "POST" })
     if (!user) throw new Error("Sign in before linking SportyBet.");
     const sql = await getSql();
     await ensurePayments(sql);
-    const saved = await sql<{ country: string }>`select country from player_country where user_id = ${user.id}`;
-    const country = saved[0]?.country === "Nigeria" ? "Nigeria" : saved[0]?.country === "Ghana" ? "Ghana" : "";
+    const saved = await sql<{
+      country: string;
+    }>`select country from player_country where user_id = ${user.id}`;
+    const country =
+      saved[0]?.country === "Nigeria" ? "Nigeria" : saved[0]?.country === "Ghana" ? "Ghana" : "";
     const lengthOk =
       country === "Nigeria"
         ? data.number.length === 10 || data.number.length === 11
@@ -1354,7 +1701,11 @@ async function retainPartnerLogin(sql: Sql, partnerId: string) {
 }
 
 function partnerCode(name: string) {
-  const base = name.replace(/[^a-z]/gi, "").slice(0, 5).toUpperCase() || "PART";
+  const base =
+    name
+      .replace(/[^a-z]/gi, "")
+      .slice(0, 5)
+      .toUpperCase() || "PART";
   return `${base}${Math.floor(100 + Math.random() * 900)}`;
 }
 
@@ -1384,7 +1735,9 @@ export const addPartner = createServerFn({ method: "POST" })
     if (!code) {
       for (let attempt = 0; attempt < 5; attempt += 1) {
         const next = partnerCode(data.name);
-        const taken = await sql<{ id: string }>`select id from partners where lower(code) = ${next.toLowerCase()}`;
+        const taken = await sql<{
+          id: string;
+        }>`select id from partners where lower(code) = ${next.toLowerCase()}`;
         if (taken.length === 0) {
           code = next;
           break;
@@ -1420,12 +1773,16 @@ export const applyPartner = createServerFn({ method: "POST" })
     const sql = await getSql();
     await ensurePayments(sql);
     await sql`alter table partners add column if not exists token text`;
-    const existing = await sql<{ id: string }>`select id from partners where lower(email) = ${data.email}`;
+    const existing = await sql<{
+      id: string;
+    }>`select id from partners where lower(email) = ${data.email}`;
     if (existing.length > 0) throw new Error("That email is already registered.");
     let code = "";
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const next = partnerCode(data.name);
-      const taken = await sql<{ id: string }>`select id from partners where lower(code) = ${next.toLowerCase()}`;
+      const taken = await sql<{
+        id: string;
+      }>`select id from partners where lower(code) = ${next.toLowerCase()}`;
       if (taken.length === 0) {
         code = next;
         break;
@@ -1451,7 +1808,9 @@ export const getPartnerGate = createServerFn({ method: "POST" })
     const sql = await getSql();
     await ensurePayments(sql);
     await sql`alter table partners add column if not exists token text`;
-    const rows = await sql<{ status: string }>`select status from partners where token = ${data.token}`;
+    const rows = await sql<{
+      status: string;
+    }>`select status from partners where token = ${data.token}`;
     const status = rows[0]?.status;
     if (status === "pending" || status === "approved" || status === "locked") return { status };
     return { status: "missing" as const };
@@ -1477,7 +1836,8 @@ export const setPartnerCommission = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string; commission: number }) => {
     const commission = Number(data?.commission);
     if (!data?.id) throw new Error("Missing partner.");
-    if (!Number.isInteger(commission) || commission < 0 || commission > 100) throw new Error("Enter a commission from 0 to 100.");
+    if (!Number.isInteger(commission) || commission < 0 || commission > 100)
+      throw new Error("Enter a commission from 0 to 100.");
     return { id: data.id, commission };
   })
   .handler(async ({ data }) => {
@@ -1492,7 +1852,8 @@ export const setPartnerPayoutStatus = createServerFn({ method: "POST" })
   .middleware([adminAuthMiddleware])
   .inputValidator((data: { id: string; status: "paid" | "rejected" }) => {
     if (!data?.id) throw new Error("Missing payout request.");
-    if (data.status !== "paid" && data.status !== "rejected") throw new Error("Choose a valid payout status.");
+    if (data.status !== "paid" && data.status !== "rejected")
+      throw new Error("Choose a valid payout status.");
     return { id: data.id, status: data.status };
   })
   .handler(async ({ data }) => {
@@ -1545,12 +1906,18 @@ export const partnerLogin = createServerFn({ method: "POST" })
     const sql = await getSql();
     await ensurePayments(sql);
     await sql`alter table partners add column if not exists token text`;
-    const rows = await sql<{ id: string; password_hash: string; status: string; token: string | null }>`
+    const rows = await sql<{
+      id: string;
+      password_hash: string;
+      status: string;
+      token: string | null;
+    }>`
       select id, password_hash, status, token from partners where lower(email) = ${data.email}
     `;
     const partner = rows[0];
     if (!partner) throw new Error("Wrong email or password.");
-    if (partner.status === "pending") throw new Error("An admin must approve your application before you can sign in.");
+    if (partner.status === "pending")
+      throw new Error("An admin must approve your application before you can sign in.");
     if (partner.status === "locked") throw new Error("This partner account is locked.");
     const saved = await sql<{ password_hash: string }>`
       select password_hash from partner_logins where email = ${data.email} limit 1
@@ -1583,7 +1950,14 @@ export const getPartnerPortal = createServerFn({ method: "POST" })
     const sql = await getSql();
     await ensurePayments(sql);
     await sql`alter table partners add column if not exists token text`;
-    const rows = await sql<{ id: string; name: string; email: string; code: string; status: string; commission: number | string }>`
+    const rows = await sql<{
+      id: string;
+      name: string;
+      email: string;
+      code: string;
+      status: string;
+      commission: number | string;
+    }>`
       select id, name, email, code, status, commission from partners where token = ${data.token}
     `;
     const partner = rows[0];
@@ -1598,8 +1972,12 @@ export const getPartnerPortal = createServerFn({ method: "POST" })
     `;
     const payments = await partnerConfirmedPayments(sql, code);
     const earnings = (amount: number) => partnerEarnings(amount, commission);
-    const ghanaPayments = payments.filter((row) => !isNairaPayment(Number(row.amount), row.country));
-    const nigeriaPayments = payments.filter((row) => isNairaPayment(Number(row.amount), row.country));
+    const ghanaPayments = payments.filter(
+      (row) => !isNairaPayment(Number(row.amount), row.country),
+    );
+    const nigeriaPayments = payments.filter((row) =>
+      isNairaPayment(Number(row.amount), row.country),
+    );
     const revenue = ghanaPayments.reduce((sum, row) => sum + Number(row.amount), 0);
     const nigeriaRevenue = nigeriaPayments.reduce((sum, row) => sum + Number(row.amount), 0);
     const payoutRows = await sql<{
@@ -1623,7 +2001,8 @@ export const getPartnerPortal = createServerFn({ method: "POST" })
       from partner_payouts where partner_id = ${partner.id} order by requested_at desc
     `;
     const payouts: PartnerPayout[] = payoutRows.map((row) => {
-      const requestedAt = row.requested_at instanceof Date ? row.requested_at : new Date(row.requested_at);
+      const requestedAt =
+        row.requested_at instanceof Date ? row.requested_at : new Date(row.requested_at);
       return {
         id: row.id,
         partnerId: partner.id,
@@ -1661,10 +2040,17 @@ export const getPartnerPortal = createServerFn({ method: "POST" })
     const now = new Date();
     const ghanaToday = dayKeyInZone(now, GHANA_TZ);
     const nigeriaToday = dayKeyInZone(now, NIGERIA_TZ);
-    const todayPayments = ghanaPayments.filter((row) => dayKeyInZone(row.created_at, GHANA_TZ) === ghanaToday);
-    const nigeriaTodayPayments = nigeriaPayments.filter((row) => dayKeyInZone(row.created_at, NIGERIA_TZ) === nigeriaToday);
+    const todayPayments = ghanaPayments.filter(
+      (row) => dayKeyInZone(row.created_at, GHANA_TZ) === ghanaToday,
+    );
+    const nigeriaTodayPayments = nigeriaPayments.filter(
+      (row) => dayKeyInZone(row.created_at, NIGERIA_TZ) === nigeriaToday,
+    );
     const todayRevenue = todayPayments.reduce((sum, row) => sum + Number(row.amount), 0);
-    const nigeriaTodayRevenue = nigeriaTodayPayments.reduce((sum, row) => sum + Number(row.amount), 0);
+    const nigeriaTodayRevenue = nigeriaTodayPayments.reduce(
+      (sum, row) => sum + Number(row.amount),
+      0,
+    );
     const buildDays = (rows: typeof payments, timeZone: string, todayKey: string) =>
       Array.from({ length: 7 }, (_, index) => {
         const key = shiftDayKey(todayKey, index - 6, timeZone);
@@ -1687,7 +2073,13 @@ export const getPartnerPortal = createServerFn({ method: "POST" })
       const bucket = isNairaPayment(amount, row.country) ? spendNgn : spendGhs;
       bucket.set(row.user_id, (bucket.get(row.user_id) ?? 0) + amount);
     }
-    const referred = await sql<{ name: string; email: string; joined: string | Date; user_id: string; country: string | null }>`
+    const referred = await sql<{
+      name: string;
+      email: string;
+      joined: string | Date;
+      user_id: string;
+      country: string | null;
+    }>`
       select reg.name, reg.email, reg.registered_at as joined, reg.user_id, reg.country
       from referrals r
       join registered_users reg on reg.user_id = r.user_id
@@ -1738,7 +2130,12 @@ export const getPartnerPortal = createServerFn({ method: "POST" })
   });
 
 async function partnerConfirmedPayments(sql: Sql, code: string) {
-  return sql<{ amount: number | string; created_at: string | Date; user_id: string; country: string | null }>`
+  return sql<{
+    amount: number | string;
+    created_at: string | Date;
+    user_id: string;
+    country: string | null;
+  }>`
       select p.amount, coalesce(p.confirmed_at, p.created_at) as created_at, p.user_id, coalesce(p.country, c.country) as country
       from payments p
       left join referrals r on r.user_id = p.user_id
@@ -1763,46 +2160,71 @@ async function partnerConfirmedPayments(sql: Sql, code: string) {
 }
 
 export const requestPartnerPayout = createServerFn({ method: "POST" })
-  .inputValidator((data: {
-    token: string;
-    amount: number;
-    currency: "GHS" | "NGN";
-    earningDate?: string;
-    accountType: "Mobile Money" | "Bank Transfer";
-    institution: string;
-    accountName: string;
-    accountNumber: string;
-  }) => {
-    const token = data?.token?.trim() ?? "";
-    const amount = Number(data?.amount);
-    const currency = data?.currency;
-    const earningDate = typeof data?.earningDate === "string" ? data.earningDate.trim() : "";
-    const accountType = data?.accountType;
-    const institution = typeof data?.institution === "string" ? data.institution.trim() : "";
-    const accountName = typeof data?.accountName === "string" ? data.accountName.trim() : "";
-    const accountNumber = typeof data?.accountNumber === "string" ? data.accountNumber.trim() : "";
-    if (!token) throw new Error("Sign in again.");
-    if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error("Enter a valid payout amount.");
-    if (currency !== "GHS" && currency !== "NGN") throw new Error("Choose a payout currency.");
-    if (accountType !== "Mobile Money" && accountType !== "Bank Transfer") throw new Error("Choose a payout method.");
-    if (institution.length < 2 || institution.length > 100) throw new Error("Enter a valid bank or mobile money provider.");
-    if (accountName.length < 2 || accountName.length > 100) throw new Error("Enter the account holder's name.");
-    if (!/^[a-z\d +()-]{4,34}$/i.test(accountNumber)) throw new Error("Enter a valid account number.");
-    return { token, amount, currency, earningDate, accountType, institution, accountName, accountNumber };
-  })
+  .inputValidator(
+    (data: {
+      token: string;
+      amount: number;
+      currency: "GHS" | "NGN";
+      earningDate?: string;
+      accountType: "Mobile Money" | "Bank Transfer";
+      institution: string;
+      accountName: string;
+      accountNumber: string;
+    }) => {
+      const token = data?.token?.trim() ?? "";
+      const amount = Number(data?.amount);
+      const currency = data?.currency;
+      const earningDate = typeof data?.earningDate === "string" ? data.earningDate.trim() : "";
+      const accountType = data?.accountType;
+      const institution = typeof data?.institution === "string" ? data.institution.trim() : "";
+      const accountName = typeof data?.accountName === "string" ? data.accountName.trim() : "";
+      const accountNumber =
+        typeof data?.accountNumber === "string" ? data.accountNumber.trim() : "";
+      if (!token) throw new Error("Sign in again.");
+      if (!Number.isSafeInteger(amount) || amount <= 0)
+        throw new Error("Enter a valid payout amount.");
+      if (currency !== "GHS" && currency !== "NGN") throw new Error("Choose a payout currency.");
+      if (accountType !== "Mobile Money" && accountType !== "Bank Transfer")
+        throw new Error("Choose a payout method.");
+      if (institution.length < 2 || institution.length > 100)
+        throw new Error("Enter a valid bank or mobile money provider.");
+      if (accountName.length < 2 || accountName.length > 100)
+        throw new Error("Enter the account holder's name.");
+      if (!/^[a-z\d +()-]{4,34}$/i.test(accountNumber))
+        throw new Error("Enter a valid account number.");
+      return {
+        token,
+        amount,
+        currency,
+        earningDate,
+        accountType,
+        institution,
+        accountName,
+        accountNumber,
+      };
+    },
+  )
   .handler(async ({ data }) => {
     const { getSql } = await import("@/lib/db");
     const sql = await getSql();
     await ensurePayments(sql);
-    const rows = await sql<{ id: string; name: string; email: string; code: string; status: string; commission: number | string }>`
+    const rows = await sql<{
+      id: string;
+      name: string;
+      email: string;
+      code: string;
+      status: string;
+      commission: number | string;
+    }>`
       select id, name, email, code, status, commission from partners where token = ${data.token}
     `;
     const partner = rows[0];
     if (!partner || partner.status !== "approved") throw new Error("Sign in again.");
     const commission = Number(partner.commission) || 0;
     const confirmed = await partnerConfirmedPayments(sql, partner.code.toLowerCase());
-    const eligiblePayments = confirmed
-      .filter((row) => (data.currency === "NGN") === isNairaPayment(Number(row.amount), row.country));
+    const eligiblePayments = confirmed.filter(
+      (row) => (data.currency === "NGN") === isNairaPayment(Number(row.amount), row.country),
+    );
     const gross = eligiblePayments.reduce((sum, row) => sum + Number(row.amount), 0);
     const netEarnings = partnerEarnings(gross, commission);
     const adminCut = adminEarnings(gross, commission);
@@ -1812,12 +2234,16 @@ export const requestPartnerPayout = createServerFn({ method: "POST" })
       where partner_id = ${partner.id} and currency = ${data.currency}
         and status in ('pending', 'paid')
     `;
-    const available = availableTotalPartnerEarnings(netEarnings, Number(reservedRows[0]?.reserved ?? 0));
+    const available = availableTotalPartnerEarnings(
+      netEarnings,
+      Number(reservedRows[0]?.reserved ?? 0),
+    );
     if (data.amount > available) throw new Error("Payout amount exceeds your available earnings.");
     const timeZone = data.currency === "NGN" ? NIGERIA_TZ : GHANA_TZ;
-    const earningDate = data.earningDate && /^\d{4}-\d{2}-\d{2}$/.test(data.earningDate)
-      ? data.earningDate
-      : dayKeyInZone(new Date(), timeZone);
+    const earningDate =
+      data.earningDate && /^\d{4}-\d{2}-\d{2}$/.test(data.earningDate)
+        ? data.earningDate
+        : dayKeyInZone(new Date(), timeZone);
     const inserted = await sql<{ id: string }>`
       insert into partner_payouts
         (id, partner_id, partner_name, partner_email, amount, currency, account_type, institution, account_name,
@@ -1829,7 +2255,10 @@ export const requestPartnerPayout = createServerFn({ method: "POST" })
       on conflict (partner_id, currency) where status = 'pending' do nothing
       returning id
     `;
-    if (inserted.length === 0) throw new Error("You already have a pending payout request for this currency. Please wait until it is processed.");
+    if (inserted.length === 0)
+      throw new Error(
+        "You already have a pending payout request for this currency. Please wait until it is processed.",
+      );
     return { requested: true };
   });
 
@@ -1959,21 +2388,35 @@ export const saveGatewayCheckout = createServerFn({ method: "POST" })
     if (email && !email.includes("@")) throw new Error("Enter a valid support email.");
     const wallets = cleanList(data?.wallets, (item) => ({
       network: readMomoNetwork(item.network, Boolean(item.number || item.name)),
-      number: String(item.number ?? "").replace(/[^\d]/g, "").slice(0, 15),
-      name: String(item.name ?? "").trim().slice(0, 80),
+      number: String(item.number ?? "")
+        .replace(/[^\d]/g, "")
+        .slice(0, 15),
+      name: String(item.name ?? "")
+        .trim()
+        .slice(0, 80),
     })).filter((item) => item.number || item.name);
-    if (wallets.some((wallet) => !wallet.network)) throw new Error("Choose a network for each Ghana MoMo wallet.");
+    if (wallets.some((wallet) => !wallet.network))
+      throw new Error("Choose a network for each Ghana MoMo wallet.");
     const banks = cleanList(data?.banks, (item) => ({
-      bank: String(item.bank ?? "").trim().slice(0, 40),
-      number: String(item.number ?? "").replace(/[^\d]/g, "").slice(0, 20),
-      name: String(item.name ?? "").trim().slice(0, 80),
+      bank: String(item.bank ?? "")
+        .trim()
+        .slice(0, 40),
+      number: String(item.number ?? "")
+        .replace(/[^\d]/g, "")
+        .slice(0, 20),
+      name: String(item.name ?? "")
+        .trim()
+        .slice(0, 80),
     })).filter((item) => item.bank || item.number || item.name);
     if (banks.some((account) => (account.number || account.name) && !account.bank)) {
       throw new Error("Choose a bank for each Ghana bank account.");
     }
     return {
       currency: "GHS",
-      businessName: String(data?.businessName ?? "").trim().slice(0, 80) || "Games Hub",
+      businessName:
+        String(data?.businessName ?? "")
+          .trim()
+          .slice(0, 80) || "Games Hub",
       whatsapp,
       email,
       paystack: Boolean(data?.paystack),
@@ -1986,9 +2429,15 @@ export const saveGatewayCheckout = createServerFn({ method: "POST" })
       wallets,
       banks,
       nigeriaBanks: cleanList(data?.nigeriaBanks, (item) => ({
-        bank: String(item.bank ?? "").trim().slice(0, 40),
-        number: String(item.number ?? "").replace(/[^\d]/g, "").slice(0, 20),
-        name: String(item.name ?? "").trim().slice(0, 80),
+        bank: String(item.bank ?? "")
+          .trim()
+          .slice(0, 40),
+        number: String(item.number ?? "")
+          .replace(/[^\d]/g, "")
+          .slice(0, 20),
+        name: String(item.name ?? "")
+          .trim()
+          .slice(0, 80),
       })).filter((item) => item.bank || item.number || item.name),
     };
   })

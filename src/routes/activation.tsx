@@ -2,9 +2,5 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PaymentCheckout } from "@/components/payment-checkout";
 
 export const Route = createFileRoute("/activation")({
-  component: ActivationPage,
+  component: () => <PaymentCheckout activation />,
 });
-
-function ActivationPage() {
-  return <PaymentCheckout activation />;
-}

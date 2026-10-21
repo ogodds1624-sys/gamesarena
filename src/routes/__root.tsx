@@ -1,4 +1,11 @@
-import { createRootRoute, HeadContent, Outlet, Scripts, useNavigate, useRouterState } from "@tanstack/react-router";
+import {
+  createRootRoute,
+  HeadContent,
+  Outlet,
+  Scripts,
+  useNavigate,
+  useRouterState,
+} from "@tanstack/react-router";
 import { useEffect } from "react";
 import { AuthProvider } from "@/lib/auth/provider";
 import { signOut } from "@/lib/auth/client";
@@ -13,7 +20,8 @@ import appCss from "../styles.css?url";
 
 const APP_NAME = "GAMES HUB";
 
-const PRESSABLE = "button, a, input, textarea, select, option, label, summary, [role='button'], [role='link']";
+const PRESSABLE =
+  "button, a, input, textarea, select, option, label, summary, [role='button'], [role='link']";
 
 let clearingIncomplete = false;
 
@@ -53,7 +61,8 @@ function BlockWatcher() {
   const blocked = useBlocked();
 
   useEffect(() => {
-    if (blocked && path !== "/" && path !== "/login" && path !== "/admin") void navigate({ to: "/", replace: true });
+    if (blocked && path !== "/" && path !== "/login" && path !== "/admin")
+      void navigate({ to: "/", replace: true });
   }, [blocked, path, navigate]);
 
   return null;
@@ -106,7 +115,14 @@ function TapBounce() {
 
     const pick = (raw: Element) => {
       const control = raw.closest(PRESSABLE);
-      if (!control || control === document.body || control === document.documentElement) return null;
+      if (
+        !control ||
+        control === document.body ||
+        control === document.documentElement ||
+        control.hasAttribute("data-no-cursor-lift")
+      ) {
+        return null;
+      }
       return control;
     };
 
@@ -177,7 +193,13 @@ export const Route = createRootRoute({
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "stylesheet", href: appCss },
-      { rel: "preload", href: "/fonts/inter-latin.woff2", as: "font", type: "font/woff2", crossOrigin: "anonymous" },
+      {
+        rel: "preload",
+        href: "/fonts/inter-latin.woff2",
+        as: "font",
+        type: "font/woff2",
+        crossOrigin: "anonymous",
+      },
       {
         rel: "preload",
         href: "/fonts/inter-latin-italic.woff2",

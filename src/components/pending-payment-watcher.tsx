@@ -6,7 +6,7 @@ import { openTask } from "@/lib/task-order";
 import { clearPendingPayment, confirmPendingPayment, readPendingPayment } from "@/lib/desk-session";
 
 // Pages that run their own waiting screen.
-const OWN_SCREEN = ["/pay", "/activation", "/nigeria-pay", "/admin", "/session"];
+const OWN_SCREEN = ["/pay", "/virtual-pay", "/activation", "/nigeria-pay", "/admin", "/session"];
 
 export function PendingPaymentWatcher() {
   const path = useRouterState({ select: (state) => state.location.pathname });
@@ -23,11 +23,17 @@ export function PendingPaymentWatcher() {
     }
     let stop = false;
 
-    function finish(rejected: boolean) {
+    function finish(rejected: boolean, savedPurpose: string) {
       clearPendingPayment();
       setState("none");
-      if (rejected) void navigate({ to: "/packages", search: { rejected: 1 }, viewTransition: false });
-      else void navigate({ to: "/session" });
+      if (savedPurpose === "virtual_credits") {
+        if (rejected) void navigate({ to: "/virtual-packages" });
+        else void navigate({ to: "/virtual-scan" });
+      } else if (rejected) {
+        void navigate({ to: "/packages", search: { rejected: 1 }, viewTransition: false });
+      } else {
+        void navigate({ to: "/session" });
+      }
     }
 
     function check() {
@@ -45,24 +51,36 @@ export function PendingPaymentWatcher() {
             clearPendingPayment();
             setState("none");
             if (row.status === "rejected") void navigate({ to: "/activation" });
-            else void getSportyLink().then((link) => openTask(navigate, link)).catch((err: unknown) => {
-              setError(err instanceof Error ? err.message : "Could not open packages. Reload to continue.");
-            });
+            else
+              void getSportyLink()
+                .then((link) => openTask(navigate, link))
+                .catch((err: unknown) => {
+                  setError(
+                    err instanceof Error
+                      ? err.message
+                      : "Could not open packages. Reload to continue.",
+                  );
+                });
             return;
           }
           if (row.status === "rejected") {
             window.clearInterval(poll);
-            finish(true);
+            finish(true, row.purpose);
           } else if (row.status === "confirmed") {
             window.clearInterval(poll);
-            confirmPendingPayment(saved.id, row.amount, row.minutes);
-            finish(false);
+            if (row.purpose !== "virtual_credits") {
+              confirmPendingPayment(saved.id, row.amount, row.minutes);
+            }
+            finish(false, row.purpose);
           } else {
             setState("pending");
           }
         })
         .catch((err: unknown) => {
-          if (!stop) setError(err instanceof Error ? err.message : "Could not check payment approval. Retrying.");
+          if (!stop)
+            setError(
+              err instanceof Error ? err.message : "Could not check payment approval. Retrying.",
+            );
           if (!stop && readPendingPayment()) setState("pending");
         });
     }
@@ -79,7 +97,11 @@ export function PendingPaymentWatcher() {
   return (
     <>
       {state !== "none" ? <SignalLoading label="waiting for confirmation" /> : null}
-      {error ? <p role="alert" className="fixed bottom-6 z-50 px-4 text-sm text-red">{error}</p> : null}
+      {error ? (
+        <p role="alert" className="fixed bottom-6 z-50 px-4 text-sm text-red">
+          {error}
+        </p>
+      ) : null}
     </>
   );
 }

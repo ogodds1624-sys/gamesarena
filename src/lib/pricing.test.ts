@@ -112,6 +112,12 @@ test("pricing migration preserves historical purchases and saves survive new rea
     await db.exec(
       await readFile(new URL("../../migrations/0011_admin_pricing.sql", import.meta.url), "utf8"),
     );
+    await db.exec(
+      await readFile(
+        new URL("../../migrations/0014_restore_activation.sql", import.meta.url),
+        "utf8",
+      ),
+    );
     assert.deepEqual(await readPricing(sql), DEFAULT_PRICING);
     const historical = (
       await db.query(

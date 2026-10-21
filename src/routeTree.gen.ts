@@ -23,7 +23,11 @@ import { Route as PartnersRouteImport } from './routes/partners'
 import { Route as PayRouteImport } from './routes/pay'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SessionRouteImport } from './routes/session'
+import { Route as VirtualPackagesRouteImport } from './routes/virtual-packages'
+import { Route as VirtualPayRouteImport } from './routes/virtual-pay'
+import { Route as VirtualScanRouteImport } from './routes/virtual-scan'
 import { Route as ApiDeskPassRouteImport } from './routes/api/desk-pass'
+import { Route as ApiScanImageRouteImport } from './routes/api/scan-image'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -96,9 +100,29 @@ const SessionRoute = SessionRouteImport.update({
   path: '/session',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VirtualPackagesRoute = VirtualPackagesRouteImport.update({
+  id: '/virtual-packages',
+  path: '/virtual-packages',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VirtualPayRoute = VirtualPayRouteImport.update({
+  id: '/virtual-pay',
+  path: '/virtual-pay',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VirtualScanRoute = VirtualScanRouteImport.update({
+  id: '/virtual-scan',
+  path: '/virtual-scan',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiDeskPassRoute = ApiDeskPassRouteImport.update({
   id: '/api/desk-pass',
   path: '/api/desk-pass',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiScanImageRoute = ApiScanImageRouteImport.update({
+  id: '/api/scan-image',
+  path: '/api/scan-image',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -122,7 +146,11 @@ export interface FileRoutesByFullPath {
   '/pay': typeof PayRoute
   '/register': typeof RegisterRoute
   '/session': typeof SessionRoute
+  '/virtual-packages': typeof VirtualPackagesRoute
+  '/virtual-pay': typeof VirtualPayRoute
+  '/virtual-scan': typeof VirtualScanRoute
   '/api/desk-pass': typeof ApiDeskPassRoute
+  '/api/scan-image': typeof ApiScanImageRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
@@ -140,7 +168,11 @@ export interface FileRoutesByTo {
   '/pay': typeof PayRoute
   '/register': typeof RegisterRoute
   '/session': typeof SessionRoute
+  '/virtual-packages': typeof VirtualPackagesRoute
+  '/virtual-pay': typeof VirtualPayRoute
+  '/virtual-scan': typeof VirtualScanRoute
   '/api/desk-pass': typeof ApiDeskPassRoute
+  '/api/scan-image': typeof ApiScanImageRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
@@ -159,7 +191,11 @@ export interface FileRoutesById {
   '/pay': typeof PayRoute
   '/register': typeof RegisterRoute
   '/session': typeof SessionRoute
+  '/virtual-packages': typeof VirtualPackagesRoute
+  '/virtual-pay': typeof VirtualPayRoute
+  '/virtual-scan': typeof VirtualScanRoute
   '/api/desk-pass': typeof ApiDeskPassRoute
+  '/api/scan-image': typeof ApiScanImageRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
@@ -179,7 +215,11 @@ export interface FileRouteTypes {
     | '/pay'
     | '/register'
     | '/session'
+    | '/virtual-packages'
+    | '/virtual-pay'
+    | '/virtual-scan'
     | '/api/desk-pass'
+    | '/api/scan-image'
     | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -197,7 +237,11 @@ export interface FileRouteTypes {
     | '/pay'
     | '/register'
     | '/session'
+    | '/virtual-packages'
+    | '/virtual-pay'
+    | '/virtual-scan'
     | '/api/desk-pass'
+    | '/api/scan-image'
     | '/api/auth/$'
   id:
     | '__root__'
@@ -215,7 +259,11 @@ export interface FileRouteTypes {
     | '/pay'
     | '/register'
     | '/session'
+    | '/virtual-packages'
+    | '/virtual-pay'
+    | '/virtual-scan'
     | '/api/desk-pass'
+    | '/api/scan-image'
     | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
@@ -234,7 +282,11 @@ export interface RootRouteChildren {
   PayRoute: typeof PayRoute
   RegisterRoute: typeof RegisterRoute
   SessionRoute: typeof SessionRoute
+  VirtualPackagesRoute: typeof VirtualPackagesRoute
+  VirtualPayRoute: typeof VirtualPayRoute
+  VirtualScanRoute: typeof VirtualScanRoute
   ApiDeskPassRoute: typeof ApiDeskPassRoute
+  ApiScanImageRoute: typeof ApiScanImageRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -338,11 +390,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SessionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/virtual-packages': {
+      id: '/virtual-packages'
+      path: '/virtual-packages'
+      fullPath: '/virtual-packages'
+      preLoaderRoute: typeof VirtualPackagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/virtual-pay': {
+      id: '/virtual-pay'
+      path: '/virtual-pay'
+      fullPath: '/virtual-pay'
+      preLoaderRoute: typeof VirtualPayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/virtual-scan': {
+      id: '/virtual-scan'
+      path: '/virtual-scan'
+      fullPath: '/virtual-scan'
+      preLoaderRoute: typeof VirtualScanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/desk-pass': {
       id: '/api/desk-pass'
       path: '/api/desk-pass'
       fullPath: '/api/desk-pass'
       preLoaderRoute: typeof ApiDeskPassRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/scan-image': {
+      id: '/api/scan-image'
+      path: '/api/scan-image'
+      fullPath: '/api/scan-image'
+      preLoaderRoute: typeof ApiScanImageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
@@ -370,7 +450,11 @@ const rootRouteChildren: RootRouteChildren = {
   PayRoute: PayRoute,
   RegisterRoute: RegisterRoute,
   SessionRoute: SessionRoute,
+  VirtualPackagesRoute: VirtualPackagesRoute,
+  VirtualPayRoute: VirtualPayRoute,
+  VirtualScanRoute: VirtualScanRoute,
   ApiDeskPassRoute: ApiDeskPassRoute,
+  ApiScanImageRoute: ApiScanImageRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

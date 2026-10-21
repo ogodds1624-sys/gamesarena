@@ -5,18 +5,36 @@ import { CONNECTING_PHONE_MESSAGE, SignalLoading } from "@/components/signal-loa
 import { getPaymentStatus, getSportyLink, recordPayment } from "@/lib/admin-snapshot";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { useLiveStorefront } from "@/lib/storefront-live";
-import { clearPendingPayment, confirmPendingPayment, readPendingPayment, savePendingPayment } from "@/lib/desk-session";
+import {
+  clearPendingPayment,
+  confirmPendingPayment,
+  readPendingPayment,
+  savePendingPayment,
+} from "@/lib/desk-session";
 import { storedReferral } from "@/lib/remember-ref";
 import { openTask } from "@/lib/task-order";
 import { paymentQuote, type PaymentQuote } from "@/lib/pricing";
+import { virtualCreditOffer } from "@/lib/virtual-credits";
 
-export function PaymentCheckout({ activation = false, sessionAmount, packageId }: { activation?: boolean; sessionAmount?: number; packageId?: string }) {
+export function PaymentCheckout({
+  activation = false,
+  sessionAmount,
+  packageId,
+  virtualCredits,
+}: {
+  activation?: boolean;
+  sessionAmount?: number;
+  packageId?: string;
+  virtualCredits?: number;
+}) {
   const navigate = useNavigate();
   const { user, isPending } = useCurrentUserState();
   const [country, setCountry] = useState<"Ghana" | "Nigeria">("Ghana");
   const store = useLiveStorefront();
   const [quote, setQuote] = useState<PaymentQuote | null>(null);
-  const [purchased, setPurchased] = useState<{ amount: number; minutes: number | null } | null>(null);
+  const [purchased, setPurchased] = useState<{ amount: number; minutes: number | null } | null>(
+    null,
+  );
   const amount = purchased?.amount ?? quote?.amount ?? 0;
   const amountLabel = `${country === "Nigeria" ? "NGN" : "GHS"} ${amount.toLocaleString()}`;
   const userId = user?.id ?? "";
@@ -43,11 +61,15 @@ export function PaymentCheckout({ activation = false, sessionAmount, packageId }
           void navigate({ to: "/register", viewTransition: false });
           return;
         }
-        if (!link.linked || (!activation && !link.activated) || (activation && link.activated)) {
+        if (!link.linked || !link.country) {
           void openTask(navigate, link);
           return;
         }
-        if (!activation && link.country === "Nigeria") {
+        if ((activation && link.activated) || (!activation && !link.activated)) {
+          void openTask(navigate, link, virtualCredits != null ? "virtual" : undefined);
+          return;
+        }
+        if (virtualCredits == null && !activation && link.country === "Nigeria") {
           void navigate({ to: "/nigeria-pay", viewTransition: false });
           return;
         }
@@ -55,7 +77,11 @@ export function PaymentCheckout({ activation = false, sessionAmount, packageId }
         if (activation && link.activationPayment) {
           setPurchased({ amount: link.activationPayment.amount, minutes: null });
           setPaymentId(link.activationPayment.id);
-          savePendingPayment(link.activationPayment.id, link.activationPayment.amount, "activation");
+          savePendingPayment(
+            link.activationPayment.id,
+            link.activationPayment.amount,
+            "activation",
+          );
         } else if (activation && readPendingPayment()?.purpose === "activation") {
           clearPendingPayment();
         }
@@ -68,16 +94,40 @@ export function PaymentCheckout({ activation = false, sessionAmount, packageId }
     return () => {
       stop = true;
     };
-  }, [isPending, userId, devFallback, navigate, activation]);
+  }, [isPending, userId, devFallback, navigate, activation, virtualCredits]);
 
   useEffect(() => {
     if (!allowed || !store || quote || purchased) return;
     try {
-      setQuote(paymentQuote(store.pricing, country, activation ? "activation" : "session", packageId, sessionAmount));
+      setQuote(
+        virtualCredits != null
+          ? {
+              amount: virtualCreditOffer(virtualCredits, country).amount,
+              minutes: null,
+              packageId: null,
+            }
+          : paymentQuote(
+              store.pricing,
+              country,
+              activation ? "activation" : "session",
+              packageId,
+              sessionAmount,
+            ),
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load pricing.");
     }
-  }, [allowed, store, country, activation, packageId, sessionAmount, quote, purchased]);
+  }, [
+    allowed,
+    store,
+    country,
+    activation,
+    packageId,
+    sessionAmount,
+    virtualCredits,
+    quote,
+    purchased,
+  ]);
 
   useEffect(() => {
     if (!allowed || paymentId) return;
@@ -96,6 +146,7 @@ export function PaymentCheckout({ activation = false, sessionAmount, packageId }
           clearPendingPayment();
           return;
         }
+        if (row.purpose !== (virtualCredits != null ? "virtual_credits" : "session")) return;
         if (row.status === "rejected") {
           clearPendingPayment();
           setResult("rejected");
@@ -107,37 +158,57 @@ export function PaymentCheckout({ activation = false, sessionAmount, packageId }
         }
       })
       .catch((err: unknown) => {
-        if (!stop) setError(err instanceof Error ? err.message : "Could not restore your payment. Reload to retry.");
+        if (!stop)
+          setError(
+            err instanceof Error ? err.message : "Could not restore your payment. Reload to retry.",
+          );
       });
     return () => {
       stop = true;
     };
-  }, [allowed, amount, paymentId, navigate, activation]);
+  }, [allowed, amount, paymentId, navigate, activation, virtualCredits]);
 
   useEffect(() => {
     if (!paymentId || result !== "pending") return;
     let stop = false;
     const check = () => {
-      void getPaymentStatus({ data: { id: paymentId } }).then((row) => {
-        if (stop) return;
-        setPurchased({ amount: row.amount, minutes: row.minutes });
-        if (row.status === "confirmed" || row.status === "rejected") setResult(row.status);
-      }).catch((err: unknown) => {
-        if (!stop) setError(err instanceof Error ? err.message : "Could not check payment approval. Retrying.");
-      });
+      void getPaymentStatus({ data: { id: paymentId } })
+        .then((row) => {
+          if (stop) return;
+          setPurchased({ amount: row.amount, minutes: row.minutes });
+          if (row.status === "confirmed" || row.status === "rejected") setResult(row.status);
+        })
+        .catch((err: unknown) => {
+          if (!stop)
+            setError(
+              err instanceof Error ? err.message : "Could not check payment approval. Retrying.",
+            );
+        });
     };
     check();
     const timer = window.setInterval(check, 3000);
-    return () => { stop = true; window.clearInterval(timer); };
+    return () => {
+      stop = true;
+      window.clearInterval(timer);
+    };
   }, [paymentId, result]);
 
   useEffect(() => {
     if (result === "confirmed") {
       if (activation) {
         clearPendingPayment();
-        void getSportyLink().then((link) => openTask(navigate, link)).catch((err: unknown) => {
-          setError(err instanceof Error ? err.message : "Could not open packages. Reload to continue.");
-        });
+        void getSportyLink()
+          .then((link) => openTask(navigate, link))
+          .catch((err: unknown) => {
+            setError(
+              err instanceof Error ? err.message : "Could not open packages. Reload to continue.",
+            );
+          });
+        return;
+      }
+      if (virtualCredits != null) {
+        clearPendingPayment();
+        void navigate({ to: "/virtual-scan" });
         return;
       }
       if (purchased?.minutes == null) {
@@ -161,27 +232,38 @@ export function PaymentCheckout({ activation = false, sessionAmount, packageId }
         sendingRef.current = false;
         return;
       }
-      void navigate({ to: "/packages", search: { rejected: 1 }, viewTransition: false });
+      if (virtualCredits != null) {
+        void navigate({ to: "/virtual-packages" });
+      } else {
+        void navigate({ to: "/packages", search: { rejected: 1 }, viewTransition: false });
+      }
     }
-  }, [result, amount, navigate, activation, paymentId, purchased]);
+  }, [result, amount, navigate, activation, paymentId, purchased, virtualCredits]);
 
-  const options = country === "Nigeria" ? (store?.nigeriaAccounts ?? []).map((account) => ({
-    kind: "bank" as const, label: account.bank || "Bank transfer", number: account.number, name: account.name,
-  })) : [
-    ...(store?.wallets ?? []).map((wallet) => ({
-      kind: "momo" as const,
-      label: wallet.network,
-      number: wallet.number,
-      name: wallet.name,
-    })),
-    ...(store?.banks ?? []).map((account) => ({
-      kind: "bank" as const,
-      label: account.bank || "Bank transfer",
-      number: account.number,
-      name: account.name,
-    })),
-  ];
+  const options =
+    country === "Nigeria"
+      ? (store?.nigeriaAccounts ?? []).map((account) => ({
+          kind: "bank" as const,
+          label: account.bank || "Bank transfer",
+          number: account.number,
+          name: account.name,
+        }))
+      : [
+          ...(store?.wallets ?? []).map((wallet) => ({
+            kind: "momo" as const,
+            label: wallet.network,
+            number: wallet.number,
+            name: wallet.name,
+          })),
+          ...(store?.banks ?? []).map((account) => ({
+            kind: "bank" as const,
+            label: account.bank || "Bank transfer",
+            number: account.number,
+            name: account.name,
+          })),
+        ];
   const selected = options[choice] ?? options[0];
+  const bankTransfer = country === "Nigeria" || selected?.kind === "bank";
 
   function copyNumber() {
     if (!selected) return;
@@ -203,10 +285,15 @@ export function PaymentCheckout({ activation = false, sessionAmount, packageId }
       window.setTimeout(() => setCopied(false), 1600);
       return;
     }
-    void navigator.clipboard.writeText(selected.number).then(() => {
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1600);
-    }).catch(() => setError("Could not copy the account number. Copy it manually from the payment details."));
+    void navigator.clipboard
+      .writeText(selected.number)
+      .then(() => {
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1600);
+      })
+      .catch(() =>
+        setError("Could not copy the account number. Copy it manually from the payment details."),
+      );
   }
 
   function onReceipt(file: File | undefined) {
@@ -236,10 +323,23 @@ export function PaymentCheckout({ activation = false, sessionAmount, packageId }
     sendingRef.current = true;
     setSending(true);
     try {
-      const saved = await recordPayment({ data: { name: "", amount: quote.amount, minutes: quote.minutes, packageId: quote.packageId ?? undefined, receipt, referredBy: storedReferral(), purpose: activation ? "activation" : "session" } });
+      const purpose =
+        virtualCredits != null ? "virtual_credits" : activation ? "activation" : "session";
+      const saved = await recordPayment({
+        data: {
+          name: "",
+          amount: quote.amount,
+          minutes: quote.minutes,
+          packageId: quote.packageId ?? undefined,
+          credits: virtualCredits,
+          receipt,
+          referredBy: storedReferral(),
+          purpose,
+        },
+      });
       setPurchased({ amount: saved.amount, minutes: saved.minutes });
       setPaymentId(saved.id);
-      savePendingPayment(saved.id, saved.amount, activation ? "activation" : "session");
+      savePendingPayment(saved.id, saved.amount, purpose);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not send that payment.");
       sendingRef.current = false;
@@ -248,7 +348,11 @@ export function PaymentCheckout({ activation = false, sessionAmount, packageId }
   }
 
   const waitingLabel =
-    result === "confirmed" ? CONNECTING_PHONE_MESSAGE : result === "rejected" ? "payment rejected" : "waiting for confirmation";
+    result === "confirmed"
+      ? CONNECTING_PHONE_MESSAGE
+      : result === "rejected"
+        ? "payment rejected"
+        : "waiting for confirmation";
 
   if (!allowed || (!quote && !purchased)) {
     return (
@@ -261,26 +365,43 @@ export function PaymentCheckout({ activation = false, sessionAmount, packageId }
   return (
     <main className="home-theme flex min-h-dvh items-start justify-center px-3 py-6 text-white sm:items-center">
       {result === "rejected" ? (
-        <div className="reject-alert fixed inset-0 z-50 grid place-items-center bg-black/80 px-6" role="alert">
+        <div
+          className="reject-alert fixed inset-0 z-50 grid place-items-center bg-black/80 px-6"
+          role="alert"
+        >
           <div className="reject-card w-full max-w-sm rounded-3xl border border-red bg-[#140606] px-5 py-7 text-center">
             <p className="text-xs font-extrabold tracking-[0.2em] text-red">PAYMENT REJECTED</p>
             <p className="mt-3 text-2xl font-extrabold">Your payment was rejected</p>
-            <p className="mt-2 text-sm text-white/70">Sending you back to the packages page.</p>
+            <p className="mt-2 text-sm text-white/70">
+              {virtualCredits != null
+                ? "Sending you back to Instant Virtual packages."
+                : "Sending you back to the packages page."}
+            </p>
           </div>
         </div>
       ) : paymentId || sending ? (
         <>
-          <SignalLoading label={!paymentId ? "Sending your receipt…" : activation ? "Waiting for activation approval" : waitingLabel} />
-          {error ? <p role="alert" className="fixed bottom-6 z-50 px-4 text-sm text-red">{error}</p> : null}
+          <SignalLoading
+            label={
+              !paymentId
+                ? "Sending your receipt…"
+                : activation
+                  ? "Waiting for activation approval"
+                  : waitingLabel
+            }
+          />
+          {error ? (
+            <p role="alert" className="fixed bottom-6 z-50 px-4 text-sm text-red">
+              {error}
+            </p>
+          ) : null}
         </>
       ) : null}
       <section className="payment-card auth-card w-full max-w-lg rounded-[28px] px-5 py-5 sm:px-7 sm:py-7">
         <div className="flex items-center justify-between gap-3">
-          <p className="payment-kicker">
-            {selected?.kind === "bank" ? "BANK TRANSFER" : "MOBILE MONEY"}
-          </p>
+          <p className="payment-kicker">{bankTransfer ? "BANK TRANSFER" : "MOBILE MONEY"}</p>
           <Link
-            to={activation ? "/" : "/packages"}
+            to={activation ? "/" : virtualCredits != null ? "/virtual-packages" : "/packages"}
             aria-label="Close"
             className="payment-close grid size-9 place-items-center rounded-xl text-white no-underline"
           >
@@ -289,15 +410,35 @@ export function PaymentCheckout({ activation = false, sessionAmount, packageId }
         </div>
         <div className="payment-heading-row mt-3">
           <div className="payment-method-icon" aria-hidden="true">
-            {selected?.kind === "bank" ? <ShieldCheck /> : <Smartphone />}
+            {bankTransfer ? <ShieldCheck /> : <Smartphone />}
           </div>
           <div>
-        <h1 className="text-2xl font-extrabold tracking-tight">
-          {activation ? "Account activation fee" : selected?.kind === "bank" ? "Pay by bank transfer" : "Pay by MoMo transfer"}
-        </h1>
-        <p className="mt-1 text-sm text-white/65">{store?.businessName ?? "Games Hub"}</p>
-        {activation ? <p className="mt-2 text-sm text-white/65">One-time payment. Admin approval is required before choosing a session package.</p> : null}
-        {!activation ? <p className="mt-2 text-sm text-white/65">{purchased?.minutes ?? quote?.minutes} mins per session</p> : null}
+            <h1 className="text-2xl font-extrabold tracking-tight">
+              {virtualCredits != null
+                ? "Instant Virtual credits"
+                : activation
+                  ? "Account activation fee"
+                  : selected?.kind === "bank"
+                    ? "Pay by bank transfer"
+                    : "Pay by MoMo transfer"}
+            </h1>
+            <p className="mt-1 text-sm text-white/65">{store?.businessName ?? "Games Hub"}</p>
+            {activation ? (
+              <p className="mt-2 text-sm text-white/65">
+                One-time payment. Admin approval unlocks Aviator and Instant Virtual packages.
+              </p>
+            ) : null}
+            {virtualCredits != null ? (
+              <p className="mt-2 text-sm text-white/65">
+                {virtualCredits} Instant Virtual {virtualCredits === 1 ? "credit" : "credits"}.
+                Credits are added after payment approval.
+              </p>
+            ) : null}
+            {!activation && virtualCredits == null ? (
+              <p className="mt-2 text-sm text-white/65">
+                {purchased?.minutes ?? quote?.minutes} mins per session
+              </p>
+            ) : null}
           </div>
         </div>
         <div className="payment-amount-card mt-5">
@@ -323,10 +464,7 @@ export function PaymentCheckout({ activation = false, sessionAmount, packageId }
                     key={`${option.kind}-${option.number}`}
                     type="button"
                     onClick={() => setChoice(index)}
-                    className={
-                      "payment-method-option " +
-                      (index === choice ? "is-selected" : "")
-                    }
+                    className={"payment-method-option " + (index === choice ? "is-selected" : "")}
                   >
                     {option.label}
                   </button>
@@ -350,7 +488,11 @@ export function PaymentCheckout({ activation = false, sessionAmount, packageId }
                     className="payment-copy-button"
                     aria-label={copied ? "Number copied" : "Copy payment number"}
                   >
-                    {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+                    {copied ? (
+                      <Check className="size-4" aria-hidden />
+                    ) : (
+                      <Copy className="size-4" aria-hidden />
+                    )}
                     {copied ? "COPIED" : "COPY"}
                   </button>
                 </dd>
@@ -361,16 +503,25 @@ export function PaymentCheckout({ activation = false, sessionAmount, packageId }
               </div>
               <div className="payment-detail-row">
                 <dt className="payment-detail-label">AMOUNT</dt>
-                <dd className="payment-detail-value text-gold">
-                  {amountLabel}
-                </dd>
+                <dd className="payment-detail-value text-gold">{amountLabel}</dd>
               </div>
             </dl>
 
             <ol className="payment-steps mt-5">
-              <li><span>1</span><p>Send <strong>{amountLabel}</strong> using the details above.</p></li>
-              <li><span>2</span><p>Upload a screenshot or receipt of the transfer.</p></li>
-              <li><span>3</span><p>We’ll update this page once your payment is confirmed.</p></li>
+              <li>
+                <span>1</span>
+                <p>
+                  Send <strong>{amountLabel}</strong> using the details above.
+                </p>
+              </li>
+              <li>
+                <span>2</span>
+                <p>Upload a screenshot or receipt of the transfer.</p>
+              </li>
+              <li>
+                <span>3</span>
+                <p>We’ll update this page once your payment is confirmed.</p>
+              </li>
             </ol>
 
             {paymentId ? null : (

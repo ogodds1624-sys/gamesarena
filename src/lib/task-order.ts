@@ -6,10 +6,10 @@ export type TaskProgress = {
   signedIn: boolean;
   country: "Ghana" | "Nigeria" | null;
   linked: boolean;
-  activated: boolean;
+  activated?: boolean;
 };
 
-/** Registration, country, SportyBet connection, activation, then package prices. */
+/** Registration, country, SportyBet connection, activation, then packages. */
 export function taskStep(link: TaskProgress): 1 | 2 | 3 | 4 | 5 {
   if (!link.signedIn) return 1;
   if (link.country !== "Ghana" && link.country !== "Nigeria") return 2;
@@ -18,7 +18,9 @@ export function taskStep(link: TaskProgress): 1 | 2 | 3 | 4 | 5 {
   return 5;
 }
 
-export async function openTask(navigate: Navigate, link: TaskProgress) {
+export async function openTask(navigate: Navigate, link: TaskProgress, game?: "virtual") {
+  if (game && typeof window !== "undefined")
+    window.sessionStorage.setItem("games-hub-next-game", game);
   const step = taskStep(link);
   if (step === 1) {
     await navigate({ to: "/register" });
@@ -34,6 +36,15 @@ export async function openTask(navigate: Navigate, link: TaskProgress) {
   }
   if (step === 4) {
     await navigate({ to: "/activation" });
+    return;
+  }
+  const virtual =
+    game === "virtual" ||
+    (typeof window !== "undefined" &&
+      window.sessionStorage.getItem("games-hub-next-game") === "virtual");
+  if (virtual) {
+    if (typeof window !== "undefined") window.sessionStorage.removeItem("games-hub-next-game");
+    await navigate({ to: "/virtual-packages" });
     return;
   }
   if (link.country === "Nigeria") {

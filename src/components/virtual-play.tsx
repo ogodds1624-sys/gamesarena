@@ -1,46 +1,84 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, Dices } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-
-const SYMBOLS = ["7", "★", "◆", "✦", "●"];
+import { getSportyLink, getVirtualCreditBalance } from "@/lib/admin-snapshot";
+import { openTask } from "@/lib/task-order";
+import { useBlocked } from "@/lib/blocked-users";
 
 export function VirtualPlay() {
   const navigate = useNavigate();
   const { user, isPending } = useCurrentUserState();
-  const [reels, setReels] = useState(["7", "★", "◆"]);
-  const [isSpinning, setIsSpinning] = useState(false);
-  const [hasPlayed, setHasPlayed] = useState(false);
-  const [spinId, setSpinId] = useState(0);
-  const timer = useRef<number | null>(null);
+  const userId = user?.id;
+  const isDevFallback = user?.isDevFallback === true;
+  const blocked = useBlocked();
+  const reels = ["7", "★", "◆"];
+  const [isStarting, setIsStarting] = useState(false);
+  const [balance, setBalance] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(
-    () => () => {
-      if (timer.current !== null) window.clearTimeout(timer.current);
-    },
-    [],
-  );
+  useEffect(() => {
+    if (isPending) return;
+    if (!userId || isDevFallback) {
+      setBalance(null);
+      return;
+    }
+    let stop = false;
+    void getVirtualCreditBalance()
+      .then(({ balance: nextBalance }) => {
+        if (!stop) setBalance(nextBalance);
+      })
+      .catch((err: unknown) => {
+        if (!stop)
+          setError(
+            err instanceof Error ? err.message : "Could not load your Instant Virtual credits.",
+          );
+      });
+    return () => {
+      stop = true;
+    };
+  }, [isPending, userId, isDevFallback]);
 
   async function play() {
-    if (isPending || isSpinning) return;
+    if (isPending || isStarting || blocked) return;
     if (!user || user.isDevFallback) {
-      await navigate({ to: "/login" });
+      await navigate({ to: "/register" });
       return;
     }
 
-    setReels(Array.from({ length: 3 }, () => SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]!));
-    setSpinId((id) => id + 1);
-    setIsSpinning(true);
-    setHasPlayed(false);
-    timer.current = window.setTimeout(() => {
-      setIsSpinning(false);
-      setHasPlayed(true);
-      timer.current = null;
-    }, 900);
+    setError(null);
+    setIsStarting(true);
+    try {
+      const link = await getSportyLink();
+      if (!link.signedIn) {
+        await navigate({ to: "/register" });
+        return;
+      }
+      if (!link.country || !link.linked || !link.activated) {
+        await openTask(navigate, link, "virtual");
+        return;
+      }
+
+      const result = await getVirtualCreditBalance();
+      setBalance(result.balance);
+      if (result.balance < 1) {
+        await navigate({ to: "/virtual-packages" });
+        return;
+      }
+      await navigate({ to: "/virtual-scan" });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not start Instant Virtual. Try again.");
+    } finally {
+      setIsStarting(false);
+    }
   }
 
   return (
-    <section className="virtual-play-card" aria-labelledby="virtual-play-title">
+    <section
+      id="instant-virtual"
+      className="virtual-play-card"
+      aria-labelledby="virtual-play-title"
+    >
       <div className="virtual-play-preview">
         <div
           className="iphone-device virtual-play-phone"
@@ -73,17 +111,19 @@ export function VirtualPlay() {
           <h2 id="virtual-play-title" className="virtual-play-kicker">
             Instant virtual play
           </h2>
+          <p className="mt-1 text-sm text-white/65" aria-live="polite">
+            {balance == null
+              ? "Sign in to view your credits"
+              : `${balance} ${balance === 1 ? "credit" : "credits"} available`}
+          </p>
         </div>
       </div>
       <div className="virtual-play-controls">
-        <div
-          className="virtual-reels"
-          aria-label={isSpinning ? "Reels spinning" : `Result: ${reels.join(" ")}`}
-        >
+        <div className="virtual-reels" aria-label="Instant Virtual preview">
           {reels.map((symbol, index) => (
             <span
-              key={`${spinId}-${index}`}
-              className={`virtual-reel${isSpinning ? " is-spinning" : ""}`}
+              key={index}
+              className="virtual-reel"
               style={{ animationDelay: `${index * 90}ms` }}
               aria-hidden="true"
             >
@@ -96,18 +136,19 @@ export function VirtualPlay() {
         type="button"
         className="virtual-play-button predictor-cta buy-pulse flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-gold text-base font-extrabold tracking-wide text-black"
         onClick={play}
-        disabled={isPending || isSpinning}
+        disabled={isPending || isStarting || blocked}
       >
-        <span>{isSpinning ? "SPINNING..." : "PLAY NOW"}</span>
+        <span>{isStarting ? "CHECKING..." : "PLAY NOW"}</span>
         <ArrowRight className="size-4" aria-hidden="true" />
       </button>
       <p className="virtual-play-status" role="status" aria-live="polite">
-        {isSpinning
-          ? "Your virtual reels are spinning."
-          : hasPlayed
-            ? "Spin complete. Play again anytime."
-            : null}
+        Upload a SportyBet screenshot to scan visible match details.
       </p>
+      {error ? (
+        <p className="mt-3 text-center text-sm text-red" role="alert">
+          {error}
+        </p>
+      ) : null}
     </section>
   );
 }

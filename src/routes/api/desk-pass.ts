@@ -12,6 +12,11 @@ export const Route = createFileRoute("/api/desk-pass")({
           const rows = await sql<{ login_number: string }>`
             select login_number from desk_passes
             where token = ${token} and expires_at > now()
+              and exists (
+                select 1 from payments
+                where user_id = desk_passes.user_id
+                  and purpose = 'activation' and status = 'confirmed'
+              )
             limit 1
           `;
           if (rows.length === 0) return Response.json({ ok: false, login: "" });

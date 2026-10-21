@@ -26,17 +26,26 @@ function SessionPage() {
     if (isPending) return;
     let stop = false;
     setAllowed(false);
-    void getSportyLink().then((link) => {
-      if (stop) return;
-      if (!link.signedIn || !link.linked || !link.activated || devFallback) {
-        void openTask(navigate, link);
-        return;
-      }
-      setAllowed(true);
-    }).catch((err: unknown) => {
-      if (!stop) setError(err instanceof Error ? err.message : "Could not check account activation. Reload to retry.");
-    });
-    return () => { stop = true; };
+    void getSportyLink()
+      .then((link) => {
+        if (stop) return;
+        if (!link.signedIn || !link.linked || !link.activated || devFallback) {
+          void openTask(navigate, link);
+          return;
+        }
+        setAllowed(true);
+      })
+      .catch((err: unknown) => {
+        if (!stop)
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Could not check account activation. Reload to retry.",
+          );
+      });
+    return () => {
+      stop = true;
+    };
   }, [isPending, userId, devFallback, navigate]);
 
   useEffect(() => {
@@ -98,7 +107,12 @@ function SessionPage() {
     return () => window.clearInterval(id);
   }, [navigate, isPending, userId, devFallback, allowed]);
 
-  if (error) return <main className="grid min-h-dvh place-items-center bg-ink px-5 text-white"><p role="alert">{error}</p></main>;
+  if (error)
+    return (
+      <main className="grid min-h-dvh place-items-center bg-ink px-5 text-white">
+        <p role="alert">{error}</p>
+      </main>
+    );
   if (!allowed) return null;
   if (left == null) return null;
   const total = Math.ceil(left / 1000);
@@ -110,10 +124,20 @@ function SessionPage() {
       <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
         <p className="text-xs font-extrabold tracking-[0.16em]">SESSION</p>
         <p className="text-sm text-white/60">{mins} mins</p>
-        <p className={"font-mono text-xl font-black " + (total <= 30 ? "text-red" : "text-[#3dde6a]")}>{clock}</p>
+        <p
+          className={
+            "font-mono text-xl font-black " + (total <= 30 ? "text-red" : "text-[#3dde6a]")
+          }
+        >
+          {clock}
+        </p>
       </div>
       {desk ? (
-        <iframe title="Aviator Predictor" src={desk} className="min-h-0 w-full flex-1 border-0 bg-white" />
+        <iframe
+          title="Aviator Predictor"
+          src={desk}
+          className="min-h-0 w-full flex-1 border-0 bg-white"
+        />
       ) : (
         <div className="min-h-0 w-full flex-1 bg-white" />
       )}
@@ -125,8 +149,10 @@ function SessionPage() {
           aria-labelledby="connection-issue-title"
           aria-describedby="connection-issue-message"
         >
-            <section className="w-full max-w-sm rounded-3xl border border-white/15 bg-[#121214] px-6 py-7 text-center shadow-2xl">
-            <p className="text-xs font-extrabold tracking-[0.2em] text-[#e50914]">CONNECTION STATUS</p>
+          <section className="w-full max-w-sm rounded-3xl border border-white/15 bg-[#121214] px-6 py-7 text-center shadow-2xl">
+            <p className="text-xs font-extrabold tracking-[0.2em] text-[#e50914]">
+              CONNECTION STATUS
+            </p>
             <h1 id="connection-issue-title" className="mt-3 text-2xl font-extrabold">
               Connection issue
             </h1>
