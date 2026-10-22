@@ -189,9 +189,14 @@ export const Route = createRootRoute({
       { title: APP_NAME },
       { name: "description", content: "Create a Games Hub account and open the live desk." },
       { name: "theme-color", content: "#e50914" },
+      { name: "application-name", content: "Games Hub" },
+      { name: "apple-mobile-web-app-title", content: "Games Hub" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
     ],
     links: [
-      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "icon", type: "image/svg+xml", href: "/gameshub-logo.svg" },
+      { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32.png" },
       { rel: "stylesheet", href: appCss },
       {
         rel: "preload",
@@ -207,8 +212,8 @@ export const Route = createRootRoute({
         type: "font/woff2",
         crossOrigin: "anonymous",
       },
-      { rel: "manifest", href: "/__grok/manifest.webmanifest" },
-      { rel: "apple-touch-icon", href: "/__grok/icon-180.png" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" },
     ],
   }),
   component: function RootDocument() {

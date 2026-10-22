@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>Games Hub</title>
+  <rect width="512" height="512" fill="#101012"/>
+  <rect x="60" y="60" width="392" height="392" rx="88" fill="#e50914"/>
+  <path d="M239 171H181Q151 171 151 201V311Q151 341 181 341H239V252H197V283H207V309H185V203H239Z" fill="#fff"/>
+  <path d="M273 171H305V237H327V171H359V341H327V269H305V341H273Z" fill="#fff"/>
+</svg>

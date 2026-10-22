@@ -394,6 +394,13 @@ test("is idempotent", () => {
   assert.equal(once, twice);
 });
 
+test("preserves custom manifest and Apple touch icon instead of injecting placeholder links", () => {
+  const html = `<html><head><link href="/manifest.webmanifest" rel="manifest"><link rel='apple-touch-icon' sizes="180x180" href="/apple-touch-icon.png"></head></html>`;
+  const out = injectGrokPwaHead(html);
+  assert.equal((out.match(/rel=["']manifest["']/g) ?? []).length, 1);
+  assert.equal((out.match(/rel=["']apple-touch-icon["']/g) ?? []).length, 1);
+  assert.doesNotMatch(out, /__grok\/icon-180|__grok\/manifest/);
+});
 test("uses the app name in the injected title tag", () => {
   const out = injectGrokPwaHead("<html><head></head></html>", { appName: "Wild Race" });
   assert.match(out, /apple-mobile-web-app-title" content="Wild Race"/);
@@ -503,4 +510,3 @@ test("vite plugin bakes og identity as a virtual module", () => {
   assert.match(plugin, /virtual:grok-og-identity/);
   assert.match(plugin, /snapshotOgIdentity/);
 });
-

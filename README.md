@@ -35,11 +35,44 @@ opens the Instant Virtual scanner when credits are available.
 
 ## Instant Virtual screenshot scanning
 
+### Home Screen icons
+
+Games Hub uses the approved red/white GH monogram in `public/gameshub-logo.svg`.
+Run `node scripts/generate-app-icons.mjs` to regenerate the opaque 180px Apple
+touch icon, 192px/512px Android icons and 32px PNG favicon. The monogram sits
+inside the maskable safe area. `public/manifest.webmanifest` declares the app
+name, root start URL, standalone display and Android icons; the root route
+declares the favicon, Apple icon and Apple app metadata. The PWA head injector
+respects these custom links rather than appending its dark placeholder.
+
+After deploying, check `/apple-touch-icon.png`, `/icon-192.png`, `/icon-512.png`,
+`/favicon-32.png`, `/gameshub-logo.svg` and `/manifest.webmanifest` on the production
+domain. Image URLs must return image content rather than an HTML fallback.
+On iPhone, remove the old Home Screen shortcut, open the site in Safari and use
+Share > Add to Home Screen. On Android, remove the old shortcut/installed app,
+open the site in Chrome and use Add to Home screen / Install app. Existing
+shortcuts may retain their cached icons; reinstalling is necessary to test.
+
+The homepage Instant Virtual showcase uses a red/black/white scanner illustration
+with an upload panel and two clearly labelled sample prediction cards instead of
+the phone screenshot and animated reels. Sample odds are illustrative, not live
+results. The existing Play Now, account eligibility and credit routing remain unchanged.
+
 Payment checkout requires a receipt and the sender's MoMo/bank account holder
 name before "I've sent the money" is enabled. This applies to Ghana and Nigeria,
 including activation, session packages and Instant Virtual credits. The name is
 validated server-side, saved with the payment and displayed as "Paid from" in
-admin payment review. Existing payment records remain unchanged.
+admin payment review. The approval table and payment-proof dialog explicitly
+show the submitted MoMo/bank account name separately from the member's registered
+name. The proof dialog also offers payment confirmation for pending payments.
+Older records without a sender name are labelled as not provided and remain
+reviewable. Existing payment records remain unchanged.
+
+The admin Payment Gateway section shows "Scans available": the sum of remaining
+Instant Virtual wallet credits across users, including Ghana and Nigeria. It is
+read from the credit wallets on each admin snapshot refresh, not the legacy
+gateway settings counter. Pending scans reserve credits but do not reduce this
+balance until a successful charged scan completes.
 
 Approved Instant Virtual users open `/virtual-scan`, select or drop up to **five
 PNG, JPEG, or WebP screenshots, each at most 3 MB**, and scanning starts

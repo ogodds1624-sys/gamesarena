@@ -619,7 +619,7 @@ function AdminPage() {
             <TransactionHistory
               payments={view.payments}
               busy={spinning}
-              onConfirm={(id) => void confirm(id)}
+              onConfirm={confirm}
               onReject={(id) => void reject(id)}
             />
           ) : tab === "members" ? (
@@ -716,6 +716,18 @@ function PaymentGateway({
 
   return (
     <div className="mt-6 space-y-4">
+      <section
+        aria-label="Available scan credits"
+        className="rounded-3xl border border-white/10 bg-[#111111] px-4 py-5"
+      >
+        <h2 className="text-lg font-black">Scans available</h2>
+        <p className="mt-3 text-3xl font-black text-white">
+          {gateway.scansRemaining.toLocaleString()}
+        </p>
+        <p className="mt-2 text-sm text-white/60">
+          Total remaining purchased scan credits across all users in Ghana and Nigeria.
+        </p>
+      </section>
       <section className="rounded-3xl border border-white/10 bg-[#111111] px-4 py-5">
         <h2 className="text-lg font-black">Exchange Rates</h2>
         <form
@@ -1636,18 +1648,34 @@ function TransactionHistory({
 }: {
   payments: AdminSnapshot["payments"];
   busy: boolean;
-  onConfirm: (id: string) => void;
+  onConfirm: (id: string) => Promise<void>;
   onReject: (id: string) => void;
 }) {
-  const [proof, setProof] = useState<string | null>(null);
+  const [proof, setProof] = useState<{ paymentId: string; receipt: string } | null>(null);
   const [opening, setOpening] = useState("");
+  const [proofError, setProofError] = useState<string | null>(null);
+  const proofPayment = payments.find((payment) => payment.id === proof?.paymentId);
   const pending = payments.filter((payment) => payment.status === "pending").length;
+
+  async function confirmReviewedPayment(id: string) {
+    setProofError(null);
+    try {
+      await onConfirm(id);
+    } catch (error) {
+      console.error("Unable to confirm payment.", error);
+      setProofError(error instanceof Error ? error.message : "Unable to confirm payment.");
+    }
+  }
 
   async function openProof(id: string) {
     setOpening(id);
+    setProofError(null);
     try {
       const row = await getPaymentProof({ data: { id } });
-      setProof(row.receipt || "missing");
+      setProof({ paymentId: id, receipt: row.receipt || "missing" });
+    } catch (error) {
+      console.error("Unable to open payment proof.", error);
+      setProofError(error instanceof Error ? error.message : "Unable to open payment proof.");
     } finally {
       setOpening("");
     }
@@ -1661,6 +1689,11 @@ function TransactionHistory({
           {payments.length} · {pending} pending
         </span>
       </div>
+      {proofError ? (
+        <p role="alert" className="px-4 pb-4 text-sm text-red">
+          {proofError}
+        </p>
+      ) : null}
       <div className="overflow-x-auto">
         <div className="min-w-[52rem]">
           <div className={txCols + " desk-head text-[11px] tracking-[0.14em]"}>
@@ -1699,6 +1732,12 @@ function TransactionHistory({
                       {payment.memberName ?? payment.payerName}
                     </p>
                     <p className="truncate text-sm text-[#6b7280]">{payment.memberEmail ?? "—"}</p>
+                    <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-white/60">
+                      MoMo / bank account name
+                    </p>
+                    <p className="break-words font-bold text-white">
+                      {payment.payerName || "Not provided (older payment)"}
+                    </p>
                   </div>
                   <div className="min-w-0">
                     <p className="font-extrabold">{moneyLabel(payment.amount, payment.country)}</p>
@@ -1711,11 +1750,6 @@ function TransactionHistory({
                     </p>
                   </div>
                   <div className="min-w-0">
-                    {payment.payerName ? (
-                      <p className="mb-2 break-words text-xs text-[#8b95a7]">
-                        Paid from: {payment.payerName}
-                      </p>
-                    ) : null}
                     {payment.hasReceipt ? (
                       <button
                         type="button"
@@ -1725,8 +1759,6 @@ function TransactionHistory({
                       >
                         {opening === payment.id ? "Opening…" : "Open payment"}
                       </button>
-                    ) : payment.payerName ? (
-                      <p className="truncate text-sm font-semibold">{payment.payerName}</p>
                     ) : (
                       <p className="text-xs text-[#6b7280]">No proof</p>
                     )}
@@ -1755,7 +1787,7 @@ function TransactionHistory({
                         <button
                           type="button"
                           disabled={busy}
-                          onClick={() => onConfirm(payment.id)}
+                          onClick={() => void confirmReviewedPayment(payment.id)}
                           className="rounded-full border border-[#86d4a0] px-2 py-1 text-[10px] font-extrabold text-[#128a3e] disabled:opacity-60"
                         >
                           MONEY RECEIVED
@@ -1778,7 +1810,12 @@ function TransactionHistory({
         </div>
       </div>
       {proof ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 px-4" role="dialog">
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/80 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Payment proof"
+        >
           <div className="max-h-[90dvh] w-full max-w-md overflow-auto rounded-[28px] border border-line bg-panel">
             <div className="flex items-center justify-between gap-3 px-5 py-4">
               <p className="text-sm font-extrabold">Payment proof</p>
@@ -1786,13 +1823,50 @@ function TransactionHistory({
                 Close
               </button>
             </div>
-            {proof === "missing" ? (
+            {proofError ? (
+              <p role="alert" className="px-5 pb-4 text-sm text-red">
+                {proofError}
+              </p>
+            ) : null}
+            {proofPayment ? (
+              <div className="space-y-2 border-y border-white/10 px-5 py-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-white/60">
+                  MoMo / bank account name
+                </p>
+                <p className="break-words text-lg font-extrabold text-white">
+                  {proofPayment.payerName || "Not provided (older payment)"}
+                </p>
+                <p className="break-words text-sm text-white/70">
+                  Member: {proofPayment.memberName ?? "—"} · {proofPayment.memberEmail ?? "—"}
+                </p>
+                <p className="font-bold">{moneyLabel(proofPayment.amount, proofPayment.country)}</p>
+                {proofPayment.status === "pending" ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void confirmReviewedPayment(proofPayment.id)}
+                    className="rounded-xl bg-[#128a3e] px-4 py-3 text-sm font-extrabold text-white disabled:opacity-60"
+                  >
+                    MONEY RECEIVED — CONFIRM PAYMENT
+                  </button>
+                ) : (
+                  <p className="text-sm font-bold uppercase">
+                    {proofPayment.status === "confirmed" ? "Payment confirmed" : "Payment rejected"}
+                  </p>
+                )}
+              </div>
+            ) : null}
+            {proof.receipt === "missing" ? (
               <p className="px-5 pb-5 text-sm text-white/70">No file was attached.</p>
-            ) : proof.startsWith("data:image/") ? (
-              <img src={proof} alt="Payment receipt" className="w-full bg-ink object-contain" />
+            ) : proof.receipt.startsWith("data:image/") ? (
+              <img
+                src={proof.receipt}
+                alt="Payment receipt"
+                className="w-full bg-ink object-contain"
+              />
             ) : (
               <a
-                href={proof}
+                href={proof.receipt}
                 target="_blank"
                 rel="noreferrer"
                 className="block px-5 pb-5 text-sm font-extrabold text-[#7ddea0]"

@@ -851,9 +851,12 @@ async function readSnapshot(sql: Sql): Promise<AdminSnapshot> {
     from gateway_settings where id = 'main'
   `;
   const gatewayRow = gatewayRows[0];
+  const [scanCredits] = await sql<{ remaining: number | string }>`
+    select coalesce(sum(balance), 0) as remaining from virtual_credit_wallets
+  `;
   const checkout = readCheckout(gatewayRow?.checkout);
   const gateway: GatewaySettings = {
-    scansRemaining: Number(gatewayRow?.scans_remaining ?? 0),
+    scansRemaining: Number(scanCredits.remaining),
     scansUsed: Number(gatewayRow?.scans_used ?? 0),
     nigeria: Number(gatewayRow?.nigeria ?? 0),
     kenya: Number(gatewayRow?.kenya ?? 0),
