@@ -4,6 +4,11 @@ A responsive casino dashboard for game outcome predictions, user management, pay
 
 ## Account activation
 
+New email signups land on the homepage with the signed-in account and Sign out
+control in the top-right header, even before SportyBet linking. Country selection,
+linking and activation are still required when opening a game. Existing login
+continuation follows the saved onboarding progress.
+
 One-time activation is required for both Aviator and Instant Virtual after
 country selection and SportyBet connection: **GHS 55 in Ghana / NGN 6,655 in
 Nigeria** (121 NGN per GHS). Admin approval unlocks package checkout and game

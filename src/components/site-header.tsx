@@ -1,14 +1,12 @@
 import { memo, useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { UserButton } from "@/lib/auth/gates";
-import { getSportyLink } from "@/lib/admin-snapshot";
 import { signOut } from "@/lib/auth/client";
 import { useBlocked } from "@/lib/blocked-users";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
 export const SiteHeader = memo(function SiteHeader() {
   const { user, isPending } = useCurrentUserState();
-  const [linkState, setLinkState] = useState<{ id: string; linked: boolean } | null>(null);
   const [mounted, setMounted] = useState(false);
   const userId = user && !user.isDevFallback ? user.id : "";
   const blocked = useBlocked();
@@ -17,24 +15,7 @@ export const SiteHeader = memo(function SiteHeader() {
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (!userId) return;
-    let stop = false;
-    void getSportyLink()
-      .then((link) => {
-        if (!stop) setLinkState({ id: userId, linked: link.linked });
-      })
-      .catch(() => {
-        if (!stop) setLinkState({ id: userId, linked: false });
-      });
-    return () => {
-      stop = true;
-    };
-  }, [userId]);
-
-  const known = linkState?.id === userId ? linkState.linked : null;
-  const registered = Boolean(userId) && known === true && !blocked;
-  const checking = Boolean(userId) && known === null && !blocked;
+  const registered = Boolean(userId) && !blocked;
 
   return (
     <header className="site-header sticky top-0 z-40 bg-ink">
@@ -44,7 +25,7 @@ export const SiteHeader = memo(function SiteHeader() {
         </span>
       </Link>
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-        {!mounted || checking || (isPending && !userId) ? (
+        {!mounted || (isPending && !userId) ? (
           <div className="h-9 w-16 animate-pulse rounded-full bg-white/10 sm:w-24" aria-hidden />
         ) : registered ? (
           <div className="text-white">

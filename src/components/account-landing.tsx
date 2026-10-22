@@ -39,6 +39,10 @@ export function AccountLanding({ mode }: { mode: Mode }) {
   }
 
   async function continueAfterAccount() {
+    if (register) {
+      await navigate({ to: "/" });
+      return;
+    }
     let link = await readLink();
     for (let attempt = 0; attempt < 15 && !link?.signedIn; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -142,7 +146,7 @@ export function AccountLanding({ mode }: { mode: Mode }) {
                 setError("Registration is saved. Tap Create account again once the session connects.");
                 return;
               }
-              await navigate({ to: "/country" });
+              await navigate({ to: "/" });
               return;
             }
             const failure = result.error as { message?: string; code?: string; status?: number; statusText?: string };
