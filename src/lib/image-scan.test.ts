@@ -3,9 +3,9 @@ import { test } from "node:test";
 import { readFile } from "node:fs/promises";
 import { randomBytes, randomUUID } from "node:crypto";
 import { PGlite } from "@electric-sql/pglite";
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import sharp from "sharp";
-import { analyzeScreenshot, createScanClient } from "./scan-analysis.server.ts";
+import { analyzeScreenshot } from "./scan-analysis.server.ts";
 import {
   extractionSchema,
   rankFixtures,
@@ -23,7 +23,7 @@ import {
   scanEncryptionKey,
   normalizeScanImage,
 } from "./scan-image-codec.server.ts";
-import { processScanJob, readScanJobs, scanErrorDiagnostics } from "./scan-jobs.server.ts";
+import { processScanJob, readScanJobs } from "./scan-jobs.server.ts";
 import type { Sql } from "./db";
 
 function fixture(patch: Partial<Fixture> = {}): Fixture {
@@ -46,52 +46,6 @@ function fixture(patch: Partial<Fixture> = {}): Fixture {
   };
 }
 
-test("provider diagnostics expose only allowlisted codes and validated request IDs", () => {
-  assert.deepEqual(
-    scanErrorDiagnostics({
-      code: "invalid_api_key",
-      type: "invalid_request_error",
-      requestID: "req_test123",
-      message: "secret credential or screenshot contents",
-      headers: { authorization: "private" },
-    }),
-    {
-      authenticationReason: "unclassified",
-      providerCode: "invalid_api_key",
-      providerType: "invalid_request_error",
-      providerRequestId: "req_test123",
-    },
-  );
-  const unsafe = scanErrorDiagnostics({
-    code: "sk-private-value",
-    type: "private-image-text",
-    requestID: "secret",
-  });
-  assert.deepEqual(unsafe, {
-    authenticationReason: "unclassified",
-    providerCode: "unrecognized",
-    providerType: "unrecognized",
-    providerRequestId: undefined,
-  });
-  assert.deepEqual(scanErrorDiagnostics(null), {});
-  const sdkError = new OpenAI.AuthenticationError(
-    401,
-    {
-      code: "invalid_api_key",
-      type: "invalid_request_error",
-      message: "Incorrect API key provided: sk-private-value",
-    },
-    undefined,
-    new Headers({ "x-request-id": "req_realSDK123" }),
-  );
-  assert.deepEqual(scanErrorDiagnostics(sdkError), {
-    authenticationReason: "invalid_key",
-    providerCode: "invalid_api_key",
-    providerType: "invalid_request_error",
-    providerRequestId: "req_realSDK123",
-  });
-  assert.ok(!JSON.stringify(scanErrorDiagnostics(sdkError)).includes("sk-private-value"));
-});
 function extraction(fixtures = [fixture()]): Extraction {
   return {
     screenshotType: "sportybet_instant_football",
@@ -276,70 +230,30 @@ test("image decoding rejects corrupt and undersized files; encryption detects ta
   assert.throws(() => scanEncryptionKey("weak"), /64 hexadecimal/);
 });
 
-test("authentication transport diagnostics contain only booleans", async () => {
-  const logs: unknown[][] = [];
-  const original = console.error;
-  console.error = (...args: unknown[]) => {
-    logs.push(args);
-  };
-  try {
-    const client = createScanClient("sk-test-placeholder", async (_input, init) => {
-      assert.ok(!(init?.headers instanceof Headers));
-      assert.equal(
-        (init?.headers as Record<string, string>).authorization,
-        "Bearer sk-test-placeholder",
-      );
-      return Response.json(
-        { error: { code: "invalid_api_key", message: "private provider text" } },
-        { status: 401 },
-      );
-    });
-    await assert.rejects(client.chat.completions.create({ model: "test", messages: [] }));
-    assert.deepEqual(logs, [
-      [
-        "[virtual-scan] Authentication transport",
-        {
-          authorizationPresent: true,
-          authorizationMatchesKey: true,
-          keyFormatValid: true,
-          expectedEndpoint: true,
-          redirected: false,
-        },
-      ],
-    ]);
-    assert.ok(!JSON.stringify(logs).includes("sk-test-placeholder"));
-  } finally {
-    console.error = original;
-  }
-});
-
 test("real SDK request sends image and strict extraction prompt; provider and invalid-output failures reject", async () => {
   let text = JSON.stringify(extraction());
-  let stop = "stop";
-  let refusal: string | null = null;
+  let stop = "end_turn";
   let status = 200;
   const requests: Record<string, unknown>[] = [];
-  const client = new OpenAI({
+  const client = new Anthropic({
     apiKey: "test-placeholder",
     maxRetries: 0,
-    fetch: async (_url, init) => {
-      assert.equal(new Headers(init?.headers).get("authorization"), "Bearer test-placeholder");
+    fetch: async (url, init) => {
+      assert.equal(String(url), "https://api.anthropic.com/v1/messages");
+      assert.equal(new Headers(init?.headers).get("x-api-key"), "test-placeholder");
+      assert.equal(new Headers(init?.headers).get("anthropic-version"), "2023-06-01");
       requests.push(JSON.parse(String(init?.body)));
       return Response.json(
         status === 200
           ? {
               id: "test",
-              object: "chat.completion",
-              created: 1,
+              type: "message",
+              role: "assistant",
               model: "vision-test",
-              choices: [
-                {
-                  index: 0,
-                  message: { role: "assistant", content: text, refusal },
-                  finish_reason: stop,
-                },
-              ],
-              usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+              content: text ? [{ type: "text", text }] : [],
+              stop_reason: stop,
+              stop_sequence: null,
+              usage: { input_tokens: 1, output_tokens: 1 },
             }
           : { error: { type: "server_error", message: "unavailable", code: null, param: null } },
         { status },
@@ -350,12 +264,11 @@ test("real SDK request sends image and strict extraction prompt; provider and in
     analyzeScreenshot(client, new Uint8Array([1, 2, 3]), "image/png", "vision-test");
   assert.deepEqual(await analyze(), extraction());
   assert.equal(requests[0].model, "vision-test");
-  assert.match(JSON.stringify(requests[0].messages), /Never invent/);
-  assert.match(JSON.stringify(requests[0].messages), /BOTH light and dark/);
-  assert.match(JSON.stringify(requests[0].messages), /Normal real-world football/);
-  assert.deepEqual(requests[0].response_format, { type: "json_object" });
-  assert.equal(requests[0].store, false);
-  assert.match(JSON.stringify(requests[0].messages), /data:image\/png;base64,AQID/);
+  assert.match(String(requests[0].system), /Never invent/);
+  assert.match(String(requests[0].system), /BOTH light and dark/);
+  assert.match(String(requests[0].system), /Normal real-world football/);
+  assert.equal(requests[0].max_tokens, 7000);
+  assert.match(JSON.stringify(requests[0].messages), /"media_type":"image\/png"/);
   assert.match(JSON.stringify(requests[0].messages), /AQID/);
   text = JSON.stringify({
     ...extraction([]),
@@ -369,12 +282,13 @@ test("real SDK request sends image and strict extraction prompt; provider and in
   await assert.rejects(analyze());
   text = JSON.stringify({ quality: "clear", fixtures: [{ home: "invented-only" }], warnings: [] });
   await assert.rejects(analyze());
-  stop = "length";
+  stop = "max_tokens";
   await assert.rejects(analyze(), /Incomplete/);
-  stop = "stop";
-  refusal = "Cannot process image";
+  stop = "refusal";
+  await assert.rejects(analyze(), /Incomplete/);
+  stop = "end_turn";
+  text = "";
   await assert.rejects(analyze(), /could not extract/);
-  refusal = null;
   for (const code of [401, 429, 500]) {
     status = code;
     await assert.rejects(analyze(), new RegExp(String(code)));
@@ -466,6 +380,18 @@ test("durable queue isolates owners, deduplicates, charges atomically, retries l
     }>`select id,model from virtual_scan_jobs where id in (${first}::uuid,${review}::uuid)`;
     assert.equal(migrated.find((row) => row.id === first)?.model, "claude-legacy-vision");
     assert.equal(migrated.find((row) => row.id === review)?.model, "gpt-4.1-mini");
+    await sql`update virtual_scan_jobs set model='gpt-4.1-mini' where id=${first}::uuid`;
+    await db.exec(
+      await readFile(
+        new URL("../../migrations/0017_restore_anthropic_scan_model.sql", import.meta.url),
+        "utf8",
+      ),
+    );
+    const restored = await sql<{ id: string; model: string }>`
+      select id,model from virtual_scan_jobs where id in (${first}::uuid,${review}::uuid)
+    `;
+    assert.equal(restored.find((row) => row.id === first)?.model, "gpt-4.1-mini");
+    assert.equal(restored.find((row) => row.id === review)?.model, "claude-sonnet-5-5");
     await processScanJob(
       sql,
       key,

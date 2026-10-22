@@ -7,7 +7,6 @@ import { isScanMediaType, matchesScanSignature, MAX_SCAN_BYTES } from "./image-s
 import { analyzeScreenshot, createScanClient } from "./scan-analysis.server";
 import { encryptScanImage, normalizeScanImage, scanEncryptionKey } from "./scan-image-codec.server";
 import { processScanJob, readScanJobs } from "./scan-jobs.server";
-import { checkScanAuthentication } from "./scan-auth.server";
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export function scanReply(body: object, status = 200) {
@@ -50,7 +49,7 @@ export async function scanImage(request: Request): Promise<Response> {
     if (id && !jobs.length) return scanReply({ error: "Scan not found." }, 404);
     return scanReply({ jobs });
   }
-  const apiKey = env("OPENAI_API_KEY");
+  const apiKey = env("ANTHROPIC_API_KEY");
   const encryptionKey = env("SCAN_IMAGE_ENCRYPTION_KEY");
   if (!apiKey || !encryptionKey)
     return scanReply(
@@ -60,13 +59,6 @@ export async function scanImage(request: Request): Promise<Response> {
       503,
     );
   const key = scanEncryptionKey(encryptionKey);
-  if (url.searchParams.get("action") === "check-auth") {
-    const [limit] = await sql<{ allowed: boolean }>`
-      select allow_virtual_scan_upload(${user.id}) as allowed
-    `;
-    if (!limit?.allowed) return scanReply({ error: "Authentication check limit reached." }, 429);
-    return scanReply(await checkScanAuthentication(apiKey));
-  }
   if (url.searchParams.get("action") === "process") {
     const id = url.searchParams.get("id") ?? "";
     if (!uuid.test(id)) return scanReply({ error: "Invalid scan ID." }, 400);
@@ -136,7 +128,7 @@ export async function scanImage(request: Request): Promise<Response> {
   const [reservation] = await sql<{ job_id: string; outcome: string }>`
     select * from enqueue_virtual_scan(
       ${id}::uuid,${user.id},${hash},${encryptScanImage(normalized, key)},
-      ${env("OPENAI_MODEL") ?? "gpt-4.1-mini"}
+      ${env("ANTHROPIC_MODEL") ?? "claude-sonnet-5-5"}
     )
   `;
   if (!reservation) throw new Error("Could not create scan job.");
@@ -172,7 +164,7 @@ export async function runScanWorker(request: Request) {
   const sql = await getSql();
   await sql`select expire_virtual_scan_jobs()`;
   const key = scanEncryptionKey(env("SCAN_IMAGE_ENCRYPTION_KEY"));
-  const apiKey = env("OPENAI_API_KEY");
+  const apiKey = env("ANTHROPIC_API_KEY");
   if (!apiKey) return scanReply({ error: "AI scanner is not configured." }, 503);
   const client = createScanClient(apiKey);
   // Every provider call and DB update is awaited before the invocation returns.

@@ -9,68 +9,6 @@ import {
 } from "./image-scan.ts";
 import { decryptScanImage } from "./scan-image-codec.server.ts";
 
-export function scanErrorDiagnostics(error: unknown) {
-  if (typeof error !== "object" || error === null) return {};
-  const codes = [
-    "missing_api_key",
-    "missing_authorization",
-    "invalid_authentication",
-    "authentication_required",
-    "missing_bearer_token",
-    "invalid_bearer_token",
-    "invalid_api_key",
-    "invalid_organization",
-    "organization_deactivated",
-    "account_deactivated",
-    "project_not_found",
-    "model_not_found",
-    "permission_denied",
-    "insufficient_permissions",
-    "insufficient_quota",
-    "rate_limit_exceeded",
-    "unsupported_country_region_territory",
-  ];
-  const types = [
-    "invalid_request_error",
-    "authentication_error",
-    "permission_error",
-    "insufficient_quota",
-    "server_error",
-  ];
-  const code = "code" in error ? error.code : undefined;
-  const type = "type" in error ? error.type : undefined;
-  const requestId = "requestID" in error ? error.requestID : undefined;
-  const message = "message" in error && typeof error.message === "string" ? error.message : "";
-  const authenticationReason = /incorrect api key|invalid api key|invalid_api_key/i.test(message)
-    ? "invalid_key"
-    : /didn.t provide an api key|missing.*authentication|missing.*api key/i.test(message)
-      ? "missing_key"
-      : /revoked/i.test(message)
-        ? "revoked_credential"
-        : /deactivated|suspended/i.test(message)
-          ? "account_disabled"
-          : /organization|organisation/i.test(message)
-            ? "organization_restriction"
-            : /ip address|ip allowlist|ip whitelist/i.test(message)
-              ? "ip_restriction"
-              : /country|region|territory/i.test(message)
-                ? "region_restriction"
-                : /issuer|token.*expired|expired.*token/i.test(message)
-                  ? "token_rejected"
-                  : "unclassified";
-  return {
-    authenticationReason,
-    providerCode:
-      typeof code === "string" ? (codes.includes(code) ? code : "unrecognized") : undefined,
-    providerType:
-      typeof type === "string" ? (types.includes(type) ? type : "unrecognized") : undefined,
-    providerRequestId:
-      typeof requestId === "string" && /^req_[a-zA-Z0-9_-]{1,100}$/.test(requestId)
-        ? requestId
-        : undefined,
-  };
-}
-
 export type JobRow = {
   id: string;
   user_id: string;
@@ -156,7 +94,6 @@ export async function processScanJob(
       attempt: job.attempts,
       type: error instanceof Error ? error.name : "UnknownError",
       status: typeof status === "number" ? status : undefined,
-      ...scanErrorDiagnostics(error),
     });
     await sql`select fail_structured_scan(
       ${job.id}::uuid,${token}::uuid,${retry},

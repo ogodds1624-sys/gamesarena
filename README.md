@@ -49,7 +49,7 @@ there is no pending payment. Aviator payments do not unlock the scanner.
 
 The existing React/TanStack Start UI, Better Auth authentication, Neon
 PostgreSQL database and red/black/white theme are retained. The server-only
-official `openai` SDK performs real vision requests; **sharp** is
+official `@anthropic-ai/sdk` performs Claude vision requests; **sharp** is
 used for actual image decoding, static-image
 validation, metadata removal and normalization. Animated images, corrupt files,
 images below 100 x 100 or above 20 megapixels, and normalized PNGs exceeding
@@ -59,8 +59,8 @@ screenshots into readable sections instead of uploading tiny text.
 Configure these **server environment variables** (never `VITE_` variables):
 
 ```dotenv
-OPENAI_API_KEY=your-private-openai-key
-OPENAI_MODEL=gpt-4.1-mini
+ANTHROPIC_API_KEY=your-private-anthropic-key
+ANTHROPIC_MODEL=claude-sonnet-5-5
 SCAN_IMAGE_ENCRYPTION_KEY=<64 random hexadecimal characters>
 CRON_SECRET=<random secret of at least 32 characters>
 ```
@@ -68,17 +68,17 @@ CRON_SECRET=<random secret of at least 32 characters>
 Also retain the existing `DATABASE_URL` (Neon), authentication and admin
 environment variables. Keep all these values server-side, never `VITE_`
 variables. Generate independent random secrets privately; do not commit keys or
-send them in chat. Use a vision model supporting Chat Completions and JSON mode
-enabled for your OpenAI API account; the
+send them in chat. Use a vision model supporting the Anthropic Messages API
+enabled for your Anthropic API account; the
 model ID is configurable. Without the API or encryption key, uploads fail
 explicitly without spending credits. Keep the encryption key stable while jobs
 are pending; rotating it makes their ciphertext unreadable.
-The previous Anthropic SDK and environment variables are no longer used.
-Migration `0016_openai_scan_model.sql` switches pending legacy Claude jobs to
-`gpt-4.1-mini` without changing completed reports or charges. New jobs use
-`OPENAI_MODEL`. OpenAI requests use JSON mode, high-detail image input, local
-schema validation and `store: false`. An OpenAI API key with API billing is
-required; a ChatGPT subscription alone does not configure API access.
+OpenAI is no longer used. Migration `0017_restore_anthropic_scan_model.sql`
+switches pending non-Claude jobs to `claude-sonnet-5-5` without changing completed
+reports or charges. Earlier migrations remain unchanged for database compatibility.
+New jobs use `ANTHROPIC_MODEL`. Claude requests use base64 image input, a strict
+JSON extraction prompt and local schema validation. An Anthropic API key with
+API billing is required; a Claude chat subscription alone does not configure API access.
 
 ### Visible extraction and qualified rankings
 
@@ -134,8 +134,7 @@ odds may therefore produce no qualified selection.
   worker, authenticated scanner request or claim removes expired ciphertext.
   This is not instantaneous erasure from database backups or provider systems.
 - Crop account details before uploading. The full normalized image is sent to
-  OpenAI; its API data/retention policies apply (`store: false` does not override
-  provider abuse-monitoring retention). Transcribed scan reports remain
+  Anthropic; its API data/retention policies apply. Transcribed scan reports remain
   in the user's private database history. Images and credentials are not logged.
 - Existing activation approval, confirmed Instant Virtual payment, supported
   country, SportyBet linking, block checks and credits remain required. Access is
@@ -200,26 +199,9 @@ Tests use the real SDK with mocked provider transport plus real image decoding,
 encryption and PGlite queue functions; they do not verify a live API key, live
 model accuracy, actual Neon credentials or a deployed cron scheduler.
 
-Scanner failure logs include HTTP status, allowlisted OpenAI error code/type and
-a format-validated OpenAI request ID and a fixed authentication-reason category
-for troubleshooting. Unknown
-codes/types are replaced with `unrecognized`; raw provider messages, credentials,
-headers and screenshots are never logged.
-Authentication failures also record boolean transport checks: header presence,
-whether it matches the configured key, key format, expected endpoint and redirects.
-These checks never log header or key values.
-
-For a controlled production authentication comparison, an activated user with an
-approved Instant Virtual package can POST to
-`/api/scan-image?action=check-auth` from the same origin. It makes two minimal
-Chat Completions requests to `https://api.openai.com/v1/chat/completions`: one
-through the scanner SDK client and one through native Node HTTPS with the same
-server-side key. It uses the existing upload-request rate limit and does not
-change scan credits or history. Successful provider requests can incur small
-OpenAI usage charges. The response exposes only key presence, provider HTTP
-statuses, validated request IDs and sanitized error categories, never credentials
-or completion contents. HTTP 200 from this diagnostic route is not proof of
-provider success: inspect each transport's nested `status`.
+Scanner failure logs include the job ID, attempt, error name and HTTP status.
+Raw provider messages, credentials, headers and screenshots are never logged.
+The temporary OpenAI authentication-comparison endpoint has been removed.
 
 ## Admin pricing and package duration
 

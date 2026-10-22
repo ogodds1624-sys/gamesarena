@@ -1,32 +1,8 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import { extractionSchema, type Extraction, type ScanMediaType } from "./image-scan.ts";
 
-export function createScanClient(apiKey: string, transport: typeof fetch = globalThis.fetch) {
-  return new OpenAI({
-    apiKey,
-    timeout: 55_000,
-    maxRetries: 0,
-    fetch: async (input, init) => {
-      const headers = new Headers(init?.headers);
-      const authorization = headers.get("authorization");
-      const response = await transport(input, {
-        ...init,
-        headers: Object.fromEntries(headers.entries()),
-      });
-      if (response.status === 401) {
-        console.error("[virtual-scan] Authentication transport", {
-          authorizationPresent: Boolean(authorization),
-          authorizationMatchesKey: authorization === `Bearer ${apiKey}`,
-          keyFormatValid: /^sk-[A-Za-z0-9_-]+$/.test(apiKey),
-          expectedEndpoint:
-            new URL(input instanceof Request ? input.url : String(input)).origin ===
-            "https://api.openai.com",
-          redirected: response.redirected,
-        });
-      }
-      return response;
-    },
-  });
+export function createScanClient(apiKey: string) {
+  return new Anthropic({ apiKey, timeout: 55_000, maxRetries: 0 });
 }
 
 export const EXTRACTION_PROMPT = `You identify and transcribe SportyBet Instant Football screenshots, not predict results.
@@ -62,26 +38,25 @@ For unrelated or unreadable images use empty fixtures and explain in warnings.
 If any fixtures are cut off or omitted due to limits, include a warning. No markdown or additional keys.`;
 
 export async function analyzeScreenshot(
-  client: OpenAI,
+  client: Anthropic,
   image: Uint8Array,
   mediaType: ScanMediaType,
   model: string,
 ): Promise<Extraction> {
-  const response = await client.chat.completions.create({
+  const response = await client.messages.create({
     model,
-    max_completion_tokens: 7000,
-    response_format: { type: "json_object" },
-    store: false,
+    max_tokens: 7000,
+    system: EXTRACTION_PROMPT,
     messages: [
-      { role: "system", content: EXTRACTION_PROMPT },
       {
         role: "user",
         content: [
           {
-            type: "image_url",
-            image_url: {
-              url: `data:${mediaType};base64,${Buffer.from(image).toString("base64")}`,
-              detail: "high",
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: mediaType,
+              data: Buffer.from(image).toString("base64"),
             },
           },
           {
@@ -92,12 +67,12 @@ export async function analyzeScreenshot(
       },
     ],
   });
-  const choice = response.choices[0];
-  if (!choice || choice.finish_reason !== "stop") throw new Error("Incomplete scan response.");
-  if (choice.message.refusal || !choice.message.content) {
-    throw new Error("AI service could not extract this screenshot.");
-  }
-  const text = choice.message.content;
+  if (response.stop_reason !== "end_turn") throw new Error("Incomplete scan response.");
+  const text = response.content
+    .filter((block) => block.type === "text")
+    .map((block) => block.text)
+    .join("\n");
+  if (!text.trim()) throw new Error("AI service could not extract this screenshot.");
   const parsed: unknown = JSON.parse(text);
   return extractionSchema.parse(parsed);
 }
