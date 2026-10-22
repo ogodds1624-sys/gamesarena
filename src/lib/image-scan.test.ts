@@ -106,7 +106,7 @@ test("sample Instant Football 1X2 rows retain abbreviations and rank visible mar
       ),
     ),
   );
-  assert.equal(report.rankings.length, 8);
+  assert.equal(report.rankings.length, 2);
   assert.deepEqual(
     report.rankings.slice(0, 2).map((item) => [item.label, item.odds]),
     [
@@ -114,7 +114,10 @@ test("sample Instant Football 1X2 rows retain abbreviations and rank visible mar
       ["ARS", 1.68],
     ],
   );
-  assert.equal(report.rankings.find((item) => item.label === "NFO")?.option, "away");
+  assert.equal(
+    report.rankings.some((item) => item.option === "draw"),
+    false,
+  );
   assert.equal(report.extraction.fixtures[0].home, "MUN");
 });
 
@@ -140,20 +143,38 @@ test("rankings use complete visible prices only, without invented probabilities"
   const report = rankFixtures(
     extraction([
       fixture(),
-      fixture({ homeOdds: 5, drawOdds: 4, awayOdds: 1.4 }),
-      fixture({ homeOdds: 4, drawOdds: 1.5, awayOdds: 3 }),
+      fixture({ home: "Team C", away: "Team D", homeOdds: 5, drawOdds: 4, awayOdds: 1.4 }),
+      fixture({ home: "Team E", away: "Team F", homeOdds: 4, drawOdds: 1.5, awayOdds: 3 }),
     ]),
   );
   assert.deepEqual(
     report.rankings.map((item) => [item.rank, item.fixtureIndex, item.option]),
     [
       [1, 1, "away"],
-      [2, 2, "draw"],
-      [3, 0, "home"],
+      [2, 0, "home"],
     ],
   );
   assert.equal("probability" in report.rankings[0], false);
   assert.match(report.limitations.join(" "), /No independent historical dataset/);
+});
+
+test("two-team picks exclude duplicate matches, repeated teams and draw favourites without forcing picks", () => {
+  const report = rankFixtures(
+    extraction([
+      fixture(),
+      fixture({ home: "Team B", away: "Team A", homeOdds: 4.2, awayOdds: 1.8 }),
+      fixture({ home: "Team A", away: "Team C", homeOdds: 1.9 }),
+      fixture({ home: "Team D", away: "Team E", homeOdds: 2 }),
+      fixture({ home: "Team F", away: "Team G", homeOdds: 2.1 }),
+    ]),
+  );
+  assert.deepEqual(
+    report.rankings.map((pick) => pick.label),
+    ["Team A", "Team D"],
+  );
+  assert.equal(report.excluded.length, 3);
+  assert.equal(rankFixtures(extraction([fixture()])).rankings.length, 1);
+  assert.equal(rankFixtures(extraction([fixture({ drawOdds: 1.2 })])).rankings.length, 0);
 });
 
 test("missing odds, uncertainty, ambiguous markets, ties and non-upcoming fixtures are excluded", () => {

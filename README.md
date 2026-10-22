@@ -39,8 +39,9 @@ Approved Instant Virtual users open `/virtual-scan`, select or drop up to **five
 PNG, JPEG, or WebP screenshots, each at most 3 MB**, and scanning starts
 automatically. The mobile file picker supports the device gallery. Each upload
 has a real transfer-progress indicator; processing has separate queued/scanning
-states. Results and private history appear on the same page without contacting
-an administrator. No Telegram bot or admin-only scanner is involved.
+states. Results appear beneath the uploader without contacting an administrator.
+The scan history section is not displayed; existing private database records and
+background job recovery are retained. No Telegram bot or admin-only scanner is involved.
 
 The scanner UI stays hidden until the server verifies a confirmed Instant
 Virtual payment for the signed-in account. Direct visits without approval go
@@ -108,8 +109,12 @@ Rankings are **displayed market favourites, not reliable outcome predictions**.
 Only visibly upcoming, clearly identified winner markets with distinct readable
 participants, complete applicable odds and no flagged uncertain fields qualify.
 Two-way markets cannot contain a draw price. The lowest odds must be at least
-0.05 below the next option. One favourite per eligible fixture is ranked by
-ascending displayed odds; reasons and exclusions accompany the evidence. No
+0.05 below the next option. At most two team favourites from different matches
+are selected by ascending displayed odds. Draw favourites, duplicate match rows
+and repeated selected teams are excluded; a missing second pick is never forced.
+Claude transcribes and checks visible evidence, not independent future outcomes.
+The results show only the selected matches' evidence; full extraction is retained
+privately. Saved classified reports are re-ranked for display using these rules. No
 historical prediction dataset is connected, and no winning probabilities,
 invented statistics or guarantees are produced. Unclear screenshots or missing
 odds may therefore produce no qualified selection.

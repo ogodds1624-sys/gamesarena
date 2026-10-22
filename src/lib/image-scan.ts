@@ -76,8 +76,9 @@ export function screenshotRejection(
 }
 
 export const RANKING_RULES = {
-  version: "sportybet-instant-football-v2",
+  version: "sportybet-instant-football-two-teams-v3",
   minimumOddsGap: 0.05,
+  maximumSelections: 2,
 } as const;
 const rankingSchema = z.object({
   rank: z.number().int().positive(),
@@ -146,6 +147,13 @@ export function rankFixtures(extraction: Extraction): ScanReport {
       return;
     }
     const favourite = options[0];
+    if (favourite.option === "draw") {
+      excluded.push({
+        fixtureIndex,
+        reason: "The market favourite is a draw, not a team selection.",
+      });
+      return;
+    }
     candidates.push({
       ...favourite,
       rank: 0,
@@ -154,9 +162,37 @@ export function rankFixtures(extraction: Extraction): ScanReport {
     });
   });
   candidates.sort((a, b) => a.odds - b.odds || a.fixtureIndex - b.fixtureIndex);
+  const rankings: ScanReport["rankings"] = [];
+  const matches = new Set<string>();
+  const teams = new Set<string>();
+  for (const candidate of candidates) {
+    const fixture = extraction.fixtures[candidate.fixtureIndex];
+    const match = [fixture.home!, fixture.away!]
+      .map((team) => team.trim().toLowerCase())
+      .sort()
+      .join("|");
+    const team = candidate.label.trim().toLowerCase();
+    if (matches.has(match) || teams.has(team)) {
+      excluded.push({
+        fixtureIndex: candidate.fixtureIndex,
+        reason: "Duplicate match or selected team.",
+      });
+      continue;
+    }
+    if (rankings.length === RANKING_RULES.maximumSelections) {
+      excluded.push({
+        fixtureIndex: candidate.fixtureIndex,
+        reason: "Outside the top two qualifying team selections.",
+      });
+      continue;
+    }
+    matches.add(match);
+    teams.add(team);
+    rankings.push({ ...candidate, rank: rankings.length + 1 });
+  }
   return {
     extraction,
-    rankings: candidates.map((item, index) => ({ ...item, rank: index + 1 })),
+    rankings,
     excluded,
     rulesVersion: RANKING_RULES.version,
     limitations: [

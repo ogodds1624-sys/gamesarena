@@ -5,7 +5,6 @@ import {
   Coins,
   ImagePlus,
   LoaderCircle,
-  RefreshCw,
   Camera,
   ScanLine,
   ShieldCheck,
@@ -50,7 +49,6 @@ function VirtualScan() {
   const [selected, setSelected] = useState<string | null>(null);
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [older, setOlder] = useState(false);
   const uploadingRef = useRef(false);
   const processing = useRef(false);
   const [processingJobId, setProcessingJobId] = useState<string | null>(null);
@@ -102,7 +100,6 @@ function VirtualScan() {
         setBalance(wallet.balance);
         setJobs(history);
         setSelected(history[0]?.id ?? null);
-        setOlder(history.length === 20);
         setApprovedUser(userId);
       }
     })().catch((err: unknown) => {
@@ -139,7 +136,7 @@ function VirtualScan() {
           setBalance(wallet.balance);
         }
       } catch (err: unknown) {
-        if (!stopped) setError(err instanceof Error ? err.message : "Could not refresh history.");
+        if (!stopped) setError(err instanceof Error ? err.message : "Could not refresh scans.");
       } finally {
         checking = false;
       }
@@ -254,20 +251,6 @@ function VirtualScan() {
       setUploading(false);
     }
   }
-  async function loadOlder() {
-    const last = jobs[jobs.length - 1];
-    if (!last) return;
-    try {
-      const incoming = await scanRequest(
-        `?before=${encodeURIComponent(last.createdAt)}&beforeId=${encodeURIComponent(last.id)}`,
-      );
-      mergeJobs(incoming);
-      setOlder(incoming.length === 20);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Could not load history.");
-    }
-  }
-
   if (isPending || !userId || approvedUser !== userId || blocked)
     return (
       <main className="grid min-h-dvh place-items-center bg-ink px-5 text-white">
@@ -308,16 +291,17 @@ function VirtualScan() {
             <span>A clearer view.</span>
           </h1>
           <p>
-            Upload SportyBet Instant Football screenshots in light or dark mode to compare
-            match-winner markets. Normal football screenshots are not supported. Scanning starts
-            automatically after upload.
+            Upload SportyBet Instant Football screenshots in light or dark mode to compare up to two
+            team favourites from different matches using visible odds and AI-read evidence. Picks
+            are not guaranteed winners. Normal football screenshots are not supported. Scanning
+            starts automatically after upload.
           </p>
           <div className="scanner-hero-badges">
             <span>
               <ScanLine size={14} aria-hidden /> Instant Football only
             </span>
             <span>
-              <ShieldCheck size={14} aria-hidden /> Private scan history
+              <ShieldCheck size={14} aria-hidden /> Private scan results
             </span>
           </div>
         </header>
@@ -339,7 +323,7 @@ function VirtualScan() {
             <Link to="/virtual-packages" className="font-bold underline">
               Choose a credit pack
             </Link>
-            . Your history stays available.
+            .
           </p>
         ) : null}
         <section className="scanner-panel mt-7" aria-labelledby="scanner-upload">
@@ -392,8 +376,8 @@ function VirtualScan() {
           <p className="mt-4 text-xs leading-relaxed text-white/55">
             Keep the Instant Football heading and 1X2 odds visible. Crop out personal details.
             Uploading sends game screenshots to the AI provider. Encrypted images are kept
-            temporarily for processing, then removed; your private results are saved in history.
-            Readable fixtures can use a credit even if no winner selection qualifies.
+            temporarily for processing, then removed; your results are saved privately. Readable
+            fixtures can use a credit even if no winner selection qualifies.
           </p>
           {uploads.length ? (
             <ul className="scanner-uploads mt-5" aria-live="polite">
@@ -499,7 +483,7 @@ function VirtualScan() {
                 window.location.reload();
               }}
             >
-              Refresh history
+              Refresh scanner
             </button>
           </div>
         ) : null}
@@ -516,49 +500,6 @@ function VirtualScan() {
               <p>Your results will appear here, directly below your screenshot.</p>
             </div>
           )}
-          <section className="scanner-panel" aria-labelledby="scan-history">
-            <div className="scanner-section-heading">
-              <RefreshCw size={20} aria-hidden />
-              <h2 id="scan-history">Your scan history</h2>
-            </div>
-            <p className="mt-3 text-xs text-white/55">
-              Only your account can view these results. Queued scans continue if you leave.
-            </p>
-            {!jobs.length ? (
-              <p className="py-6 text-sm text-white/55">Your first scan will appear here.</p>
-            ) : (
-              <ul className="mt-4 grid gap-2">
-                {jobs.map((job) => (
-                  <li key={job.id}>
-                    <button
-                      type="button"
-                      onClick={() => setSelected(job.id)}
-                      aria-pressed={selected === job.id}
-                      className={`scanner-history-button ${selected === job.id ? "is-selected" : ""}`}
-                    >
-                      <span>{new Date(job.createdAt).toLocaleString()}</span>
-                      <span className="mt-1 flex items-center gap-2 text-xs text-white/60">
-                        {!isTerminal(job.status) ? (
-                          <LoaderCircle size={13} className="animate-spin" aria-hidden />
-                        ) : null}
-                        {job.status.replace("_", " ")} /{" "}
-                        {job.result?.extraction.fixtures.length ?? 0} fixtures
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {older ? (
-              <button
-                type="button"
-                className="mt-4 text-sm underline"
-                onClick={() => void loadOlder()}
-              >
-                Load older scans
-              </button>
-            ) : null}
-          </section>
         </div>
       </div>
     </main>
