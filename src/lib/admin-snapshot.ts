@@ -40,6 +40,7 @@ export type AdminPayment = {
   memberEmail: string | null;
   hasReceipt: boolean;
   countsRevenue: boolean;
+  adminRevenueEligible: boolean;
   isTestAccount: boolean;
   confirmedAt: string;
   referredBy: string | null;
@@ -667,6 +668,7 @@ async function readSnapshot(sql: Sql): Promise<AdminSnapshot> {
     member_email: string | null;
     has_receipt: boolean | string;
     counts_revenue: boolean | string | null;
+    admin_revenue_eligible: boolean;
     is_test_account: boolean;
     confirmed_at: string | Date | null;
     referred_by: string | null;
@@ -675,6 +677,8 @@ async function readSnapshot(sql: Sql): Promise<AdminSnapshot> {
     select p.id, p.purpose, p.payer_name, p.amount, p.session_minutes, p.virtual_credits, p.status, p.created_at, u.name as member_name, u.email as member_email,
       (p.receipt is not null and p.receipt <> '') as has_receipt,
       p.counts_revenue,
+      coalesce(p.confirmed_at, p.created_at) >=
+        (select starts_at from admin_revenue_period where id = 'main') as admin_revenue_eligible,
       exists (select 1 from test_accounts t where t.email = lower(trim(u.email))) as is_test_account,
       coalesce(p.confirmed_at, p.created_at) as confirmed_at,
       coalesce(nullif(p.referred_by, ''), r.referred_by) as referred_by,
@@ -709,6 +713,7 @@ async function readSnapshot(sql: Sql): Promise<AdminSnapshot> {
           row.counts_revenue === "f" ||
           row.counts_revenue === "false"
         ),
+      adminRevenueEligible: row.admin_revenue_eligible,
       isTestAccount: row.is_test_account,
       confirmedAt:
         status !== "confirmed" || Number.isNaN(confirmed.getTime()) ? "" : confirmed.toISOString(),
@@ -916,7 +921,9 @@ async function readSnapshot(sql: Sql): Promise<AdminSnapshot> {
     pricing,
     total: members.length,
     today,
-    revenue: confirmedPayments.reduce((sum, payment) => sum + payment.amount, 0),
+    revenue: confirmedPayments
+      .filter((payment) => payment.adminRevenueEligible)
+      .reduce((sum, payment) => sum + payment.amount, 0),
     confirmed: confirmedPayments.length,
   };
 }

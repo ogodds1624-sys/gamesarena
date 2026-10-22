@@ -309,7 +309,8 @@ function AdminPage() {
   const ghanaToday = dayKeyInZone(now, GHANA_TZ);
   const nigeriaToday = dayKeyInZone(now, NIGERIA_TZ);
   const confirmed = view.payments.filter(
-    (payment) => payment.status === "confirmed" && payment.countsRevenue,
+    (payment) =>
+      payment.status === "confirmed" && payment.countsRevenue && payment.adminRevenueEligible,
   );
   const onDay = (iso: string, key: string, timeZone: string) =>
     Boolean(iso) && dayKeyInZone(iso, timeZone) === key;
@@ -2142,6 +2143,7 @@ function WeekRevenue({
       (payment) =>
         payment.status === "confirmed" &&
         payment.countsRevenue &&
+        payment.adminRevenueEligible &&
         payment.confirmedAt &&
         dayKeyInZone(payment.confirmedAt, timeZone) === key,
     );

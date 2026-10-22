@@ -306,6 +306,13 @@ is not counted as income. Earlier migrations retain their original contents.
 
 ## Admin access
 
+Migration `0019_reset_admin_revenue.sql` starts a new admin revenue period at its
+deployment time. Ghana and Nigeria daily/total revenue cards and daily history
+count only payments confirmed in this period (legacy records use creation time).
+Existing payments, approvals, credits, partner earnings and payouts are unchanged.
+Pending payments confirmed after the reset count normally. The reset runs once,
+not on each deployment or refresh.
+
 Configure `ADMIN_PASSCODE` with at least 6 characters and
 `ADMIN_SESSION_SECRET` as a random secret of at least 32 bytes in the server
 environment. Six-character numeric codes are substantially weaker than long,
