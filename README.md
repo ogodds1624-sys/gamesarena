@@ -42,6 +42,11 @@ opens the Instant Virtual scanner when credits are available.
 
 ### Home Screen icons
 
+Installed Home Screen apps show a bottom-left Refresh button on all pages.
+It reloads the current page without signing out or clearing stored data.
+It is hidden in ordinary browser tabs and respects device safe-area insets.
+Refreshing can discard unsent form input or a file selected but not yet uploaded.
+
 Games Hub uses the approved red/white GH monogram in `public/gameshub-logo.svg`.
 Run `node scripts/generate-app-icons.mjs` to regenerate the opaque 180px Apple
 touch icon, 192px/512px Android icons and 32px PNG favicon. The monogram sits
