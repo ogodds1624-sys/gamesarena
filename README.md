@@ -53,10 +53,9 @@ Share > Add to Home Screen. On Android, remove the old shortcut/installed app,
 open the site in Chrome and use Add to Home screen / Install app. Existing
 shortcuts may retain their cached icons; reinstalling is necessary to test.
 
-The homepage Instant Virtual showcase uses a red/black/white scanner illustration
-with an upload panel and two clearly labelled sample prediction cards instead of
-the phone screenshot and animated reels. Sample odds are illustrative, not live
-results. The existing Play Now, account eligibility and credit routing remain unchanged.
+The homepage Instant Virtual section shows its Instant Football screenshot in
+the original iPhone-style frame. The existing Play Now, account eligibility and
+credit routing remain unchanged.
 
 Payment checkout requires a receipt and the sender's MoMo/bank account holder
 name before "I've sent the money" is enabled. This applies to Ghana and Nigeria,

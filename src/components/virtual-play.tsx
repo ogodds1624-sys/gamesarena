@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, ScanLine, ImagePlus, Target } from "lucide-react";
+import { ArrowRight, ScanLine } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getSportyLink, getVirtualCreditBalance } from "@/lib/admin-snapshot";
@@ -78,54 +78,29 @@ export function VirtualPlay() {
       className="virtual-play-card"
       aria-labelledby="virtual-play-title"
     >
-      <div className="home-scanner-showcase" aria-label="Screenshot scanner demonstration">
-        <div className="home-scanner-heading">
-          <span>
-            <ScanLine size={18} aria-hidden /> GAMES HUB SCANNER
-          </span>
-          <span className="home-scanner-demo">DEMO</span>
-        </div>
-        <div className="home-scanner-upload">
-          <span className="home-scanner-upload-icon">
-            <ImagePlus size={30} aria-hidden />
-          </span>
-          <strong>Your screenshot. Two match picks.</strong>
-          <p>Upload Instant Football matches to get started.</p>
-          <div className="home-scanner-file">
-            <ScanLine size={18} aria-hidden />
-            <span>instant-football.png</span>
-            <span>PNG</span>
+      <div className="virtual-play-preview">
+        <div
+          className="iphone-device virtual-play-phone"
+          role="img"
+          aria-label="Instant Football preview in an iPhone 17 Pro Max-style frame"
+        >
+          <span className="iphone-side-button iphone-side-button-action" aria-hidden="true" />
+          <span className="iphone-side-button iphone-side-button-volume-up" aria-hidden="true" />
+          <span className="iphone-side-button iphone-side-button-volume-down" aria-hidden="true" />
+          <span className="iphone-side-button iphone-side-button-power" aria-hidden="true" />
+          <div className="virtual-play-phone-screen">
+            <img
+              src="/media/instant-virtual-football.png?v=2"
+              alt=""
+              className="virtual-play-image"
+              width={589}
+              height={1280}
+              loading="lazy"
+              decoding="async"
+            />
+            <span className="iphone-dynamic-island" aria-hidden="true" />
           </div>
         </div>
-        <div className="home-scanner-connector" aria-hidden>
-          <span />
-          <ArrowRight size={18} />
-          <span />
-        </div>
-        <div className="home-scanner-picks">
-          {[
-            { home: "MUN", away: "NEW", pick: "Home (1)", odds: "1.86" },
-            { home: "CRY", away: "NFO", pick: "Away (2)", odds: "2.43" },
-          ].map((match, index) => (
-            <div key={match.home} className="home-scanner-sample">
-              <p>
-                <Target size={14} aria-hidden /> SAMPLE PICK {index + 1}
-              </p>
-              <div className="home-scanner-match">
-                <strong>{match.home}</strong>
-                <span>VS</span>
-                <strong>{match.away}</strong>
-              </div>
-              <div className="home-scanner-outcome">
-                <strong>{match.pick}</strong>
-                <span>{match.odds}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-        <p className="home-scanner-caption">
-          Illustration only. Your results use your uploaded screenshot.
-        </p>
       </div>
       <div className="virtual-play-copy">
         <span className="virtual-play-icon" aria-hidden="true">
