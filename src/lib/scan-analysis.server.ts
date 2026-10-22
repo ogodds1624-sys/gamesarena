@@ -16,6 +16,7 @@ For normal_football, other or unknown return empty fixtures and explain the mism
 Do not reproduce names of account holders, phone numbers, account balances or other personal data.
 Never invent missing participants, providers, IDs, markets, odds, time, statistics or results.
 Use null for missing/unreadable scalar values; list ambiguity in uncertainFields.
+Absent optional matchId, time, provider, sport or statistics are not selection ambiguity. Keep them null/empty without flagging teams or odds as uncertain. Flag any genuinely unclear participants, market, status or odds accurately.
 Return every visible fixture (up to 30); keep odds and statistics tied to the correct fixture.
 Preserve exact participant spelling; never silently correct a blurry name.
 Decimal odds must be numeric and greater than 1. Do not convert other odds formats: leave null and flag them.

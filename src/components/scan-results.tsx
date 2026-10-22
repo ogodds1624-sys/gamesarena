@@ -10,7 +10,10 @@ import { ScanActivity } from "@/components/scan-activity";
 
 export function ScanResults({ job, working = false }: { job: ScanJob; working?: boolean }) {
   const extraction = extractionSchema.safeParse(job.result?.extraction);
-  const report = extraction.success ? rankFixtures(extraction.data) : job.result;
+  const report =
+    extraction.success && job.result?.rulesVersion !== RANKING_RULES.version
+      ? rankFixtures(extraction.data, () => 0)
+      : job.result;
   const rejection = report ? screenshotRejection(report.extraction) : null;
   return (
     <section aria-labelledby={`result-${job.id}`} className="scanner-panel">
@@ -97,7 +100,11 @@ export function ScanResults({ job, working = false }: { job: ScanJob; working?: 
             </ol>
           )}
           <p className="mt-4 text-xs text-white/55">
-            Odds-based picks, not guaranteed winners. Verify teams and odds.
+            {report.rulesVersion === RANKING_RULES.version &&
+            job.result?.rulesVersion === RANKING_RULES.version
+              ? "Two randomly selected matches; lowest-odds picks, not guaranteed winners."
+              : "Odds-based picks, not guaranteed winners."}{" "}
+            Verify teams and odds.
           </p>
         </>
       )}

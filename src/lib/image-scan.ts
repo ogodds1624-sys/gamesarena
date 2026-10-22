@@ -76,7 +76,7 @@ export function screenshotRejection(
 }
 
 export const RANKING_RULES = {
-  version: "sportybet-instant-football-two-outcomes-v4",
+  version: "sportybet-instant-football-random-matches-v5",
   maximumSelections: 2,
 } as const;
 const rankingSchema = z.object({
@@ -97,7 +97,7 @@ export const reportSchema = z.object({
 });
 export type ScanReport = z.infer<typeof reportSchema>;
 
-export function rankFixtures(extraction: Extraction): ScanReport {
+export function rankFixtures(extraction: Extraction, random = Math.random): ScanReport {
   const candidates: z.infer<typeof rankingSchema>[] = [];
   const excluded: ScanReport["excluded"] = [];
   const rejection = screenshotRejection(extraction);
@@ -116,8 +116,16 @@ export function rankFixtures(extraction: Extraction): ScanReport {
     else if (fixture.status !== "upcoming")
       reason =
         "Only visibly upcoming fixtures are eligible; live, finished, and unknown states are excluded.";
-    else if (fixture.uncertainFields.length)
-      reason = "This fixture contains uncertain fields; verify it before using a ranking.";
+    else if (
+      fixture.uncertainFields.some(
+        (field) =>
+          !["matchid", "time", "provider", "sport", "statistics"].includes(
+            field.trim().toLowerCase(),
+          ),
+      )
+    )
+      reason =
+        "This fixture contains uncertain selection details; verify it before using a ranking.";
     else if (
       fixture.homeOdds === null ||
       fixture.awayOdds === null ||
@@ -163,25 +171,31 @@ export function rankFixtures(extraction: Extraction): ScanReport {
       });
       continue;
     }
-    if (rankings.length === RANKING_RULES.maximumSelections) {
-      excluded.push({
-        fixtureIndex: candidate.fixtureIndex,
-        reason: "Outside the top two lowest-odds match selections.",
-      });
-      continue;
-    }
     matches.add(match);
     rankings.push({ ...candidate, rank: rankings.length + 1 });
   }
+  for (let i = 0; i < Math.min(RANKING_RULES.maximumSelections, rankings.length); i++) {
+    const index = i + Math.floor(random() * (rankings.length - i));
+    [rankings[i], rankings[index]] = [rankings[index], rankings[i]];
+  }
+  for (const candidate of rankings.slice(RANKING_RULES.maximumSelections)) {
+    excluded.push({
+      fixtureIndex: candidate.fixtureIndex,
+      reason: "Not included in this scan's two randomly selected matches.",
+    });
+  }
+  const selections = rankings
+    .slice(0, RANKING_RULES.maximumSelections)
+    .map((candidate, index) => ({ ...candidate, rank: index + 1 }));
   return {
     extraction,
-    rankings,
+    rankings: selections,
     excluded,
     rulesVersion: RANKING_RULES.version,
     limitations: [
       "Screenshot-only market-favourite rankings, not validated forecasts. Virtual outcomes cannot be reliably predicted from a screenshot.",
       "No independent historical dataset is connected. Visible statistics are transcribed, not treated as verified predictive history.",
-      "Rank order compares displayed odds only, which include bookmaker margin and may be stale. No winning probabilities or guarantees are calculated.",
+      "Two eligible matches are randomly selected; each pick uses that match's lowest displayed odds. Random match selection does not improve winning chances. No winning probabilities or guarantees are calculated.",
       "AI may misread details. Check participants, market rules, and odds against the original game before acting.",
     ],
   };

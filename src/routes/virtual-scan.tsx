@@ -287,7 +287,7 @@ function VirtualScan() {
             <strong>{balance} credits</strong>
           </div>
           <span className="virtual-shop-wallet-note">
-            1 successful scan / 1 credit / 2 Home, Draw or Away picks.
+            1 successful scan / 1 credit / 2 random matches, lowest-odds picks.
             <br />
             Unusable or failed scans are not charged.
           </span>

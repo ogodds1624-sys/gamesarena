@@ -8,7 +8,7 @@ import sharp from "sharp";
 import { analyzeScreenshot } from "./scan-analysis.server.ts";
 import {
   extractionSchema,
-  rankFixtures,
+  rankFixtures as selectFixtures,
   screenshotRejection,
   reportSchema,
   matchesScanSignature,
@@ -25,6 +25,8 @@ import {
 } from "./scan-image-codec.server.ts";
 import { processScanJob, readScanJobs } from "./scan-jobs.server.ts";
 import type { Sql } from "./db";
+
+const rankFixtures = (input: Extraction) => selectFixtures(input, () => 0);
 
 function fixture(patch: Partial<Fixture> = {}): Fixture {
   return {
@@ -231,6 +233,48 @@ test("close odds and ties still select the lowest displayed outcome deterministi
   );
 });
 
+test("optional metadata uncertainty does not block readable teams and odds", () => {
+  const input = extraction([
+    fixture({ matchId: null, time: null, uncertainFields: ["matchId", "time"] }),
+    fixture({ home: "Team C", away: "Team D", uncertainFields: ["provider", "statistics"] }),
+    fixture({ home: "Team E", away: "Team F", uncertainFields: ["homeOdds"] }),
+  ]);
+  const report = rankFixtures(input);
+  assert.equal(report.rankings.length, 2);
+  assert.deepEqual(
+    report.rankings.map((pick) => pick.fixtureIndex),
+    [0, 1],
+  );
+  assert.equal(report.excluded[0].fixtureIndex, 2);
+});
+
+test("random selection can reach every distinct eligible match without replacing its lowest-odds outcome", () => {
+  const input = extraction([
+    fixture(),
+    fixture({ home: "Team C", away: "Team D", drawOdds: 1.3 }),
+    fixture({ home: "Team E", away: "Team F", awayOdds: 1.4 }),
+    fixture({ home: "Team G", away: "Team H", homeOdds: 2 }),
+    fixture(),
+  ]);
+  const seen = new Set<number>();
+  for (const random of [() => 0, () => 0.5, () => 0.999999]) {
+    const report = selectFixtures(input, random);
+    assert.equal(report.rankings.length, 2);
+    assert.equal(new Set(report.rankings.map((pick) => pick.fixtureIndex)).size, 2);
+    assert.deepEqual(
+      report.rankings.map((pick) => pick.rank),
+      [1, 2],
+    );
+    for (const pick of report.rankings) {
+      seen.add(pick.fixtureIndex);
+      const row = input.fixtures[pick.fixtureIndex];
+      assert.equal(pick.odds, Math.min(row.homeOdds!, row.drawOdds!, row.awayOdds!));
+    }
+    assert.ok(report.excluded.some((item) => item.reason === "Duplicate match."));
+  }
+  assert.equal(seen.size, 4);
+});
+
 test("image types and bounds reject unsupported data", () => {
   assert.equal(MAX_SCAN_BYTES, 3 * 1024 * 1024);
   assert.equal(isScanMediaType("image/svg+xml"), false);
@@ -393,7 +437,10 @@ test("durable queue isolates owners, deduplicates, charges atomically, retries l
     let calls = 0;
     const analyze = async () => {
       calls++;
-      return extraction([fixture(), fixture({ home: "Team C", away: "Team D", drawOdds: 1.5 })]);
+      return extraction([
+        fixture({ uncertainFields: ["matchId", "time"] }),
+        fixture({ home: "Team C", away: "Team D", drawOdds: 1.5, uncertainFields: ["time"] }),
+      ]);
     };
     assert.equal(await processScanJob(sql, key, analyze, first, "u2"), false);
     assert.equal(calls, 0);
@@ -408,6 +455,10 @@ test("durable queue isolates owners, deduplicates, charges atomically, retries l
     assert.equal(saved.balance, 4);
     assert.equal(saved.charged, true);
     assert.equal(saved.result?.rankings.length, 2);
+    assert.deepEqual(
+      (await readScanJobs(sql, "u1", first))[0].result?.rankings,
+      saved.result?.rankings,
+    );
     assert.equal("image_payload" in saved, false);
     assert.equal((await enqueue(randomUUID(), "u1", first)).job_id, first);
     assert.equal(calls, 1);

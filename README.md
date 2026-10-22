@@ -117,8 +117,12 @@ participants, complete applicable odds and no flagged uncertain fields qualify.
 Two-way markets cannot contain a draw price. Each match selects its lowest-odds
 Home, Draw or Away outcome, with no minimum odds gap. Exact ties use stable
 Home, Draw, Away order (not a claim that one tied outcome is safer).
-The two different matches with the lowest selected odds are shown.
+Two different eligible matches are sampled uniformly without replacement on the
+server, then each uses its own lowest-odds outcome. Random match selection does
+not improve winning chances. Picks are saved with the report, not rerolled on refresh.
 Duplicate match rows are excluded; repeated teams in different matches are allowed.
+Missing optional match IDs, times, providers, sports or statistics do not block
+otherwise readable selections. Ambiguous selection details still exclude the row.
 If fewer than two matches qualify, request a clearer screenshot without charging.
 Claude transcribes and checks visible evidence, not independent future outcomes.
 The compact results show each selected outcome, odds and match with a brief risk note.
@@ -126,7 +130,8 @@ Each pick uses a red/black/white matchup card. A successful screenshot costs one
 credit for two match picks, not one credit per pick. When the
 balance reaches zero, a footer links to the Instant Virtual credit packages.
 Detailed extraction, warnings and limitations remain in the private report but
-are not displayed. Saved classified reports are re-ranked for display using these rules. No
+are not displayed. New saved picks are displayed unchanged; older classified reports
+are re-evaluated deterministically for compatibility, without rewriting past charges. No
 historical prediction dataset is connected, and no winning probabilities,
 invented statistics or guarantees are produced. Unclear screenshots or missing
 odds may therefore produce no qualified selection.
