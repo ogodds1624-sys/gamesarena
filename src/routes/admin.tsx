@@ -22,7 +22,6 @@ import {
   confirmPayment,
   checkAdminSession,
   deletePartner,
-  deleteTestimony,
   dayKeyInZone,
   GHANA_BANKS,
   getAdminSnapshot,
@@ -39,10 +38,8 @@ import {
   saveGatewayRates,
   setPartnerCommission,
   setPartnerLock,
-  setTestimonyStatus,
   verifyAdminPasscode,
   type AdminSnapshot,
-  type AdminTestimony,
   type BankAccount,
   type PartnerPayout,
   type GatewayCheckout,
@@ -609,12 +606,6 @@ function AdminPage() {
                 />
               </div>
               <WeekRevenue payments={view.payments} country="Nigeria" />
-              <TestimonyDesk
-                rows={view.testimonies}
-                busy={spinning}
-                onChange={setSnapshot}
-                onBusy={setSpinning}
-              />
             </>
           ) : tab === "transactions" ? (
             <TransactionHistory
@@ -2045,80 +2036,6 @@ function MemberList({ members }: { members: AdminSnapshot["members"] }) {
           )}
         </div>
       </div>
-    </section>
-  );
-}
-
-function TestimonyDesk({
-  rows,
-  busy,
-  onChange,
-  onBusy,
-}: {
-  rows: AdminTestimony[];
-  busy: boolean;
-  onChange: (snapshot: AdminSnapshot) => void;
-  onBusy: (busy: boolean) => void;
-}) {
-  async function run(task: Promise<AdminSnapshot>) {
-    onBusy(true);
-    try {
-      onChange(await task);
-    } finally {
-      onBusy(false);
-    }
-  }
-
-  return (
-    <section className="mt-8 rounded-3xl border border-white/10 bg-[#111111]">
-      <div className="px-4 py-4">
-        <h2 className="text-xs font-extrabold tracking-[0.16em]">TESTIMONIES</h2>
-      </div>
-      {rows.length === 0 ? (
-        <p className="border-t border-white/10 px-4 py-6 text-sm text-[#8b95a7]">
-          No testimonies yet.
-        </p>
-      ) : (
-        rows.map((row) => (
-          <article
-            key={row.id}
-            className="flex flex-row items-center gap-3 border-t border-[#333] px-4 py-4"
-          >
-            <div className="min-w-0 flex-1">
-              <p className="font-extrabold">
-                {row.name} <span className="text-sm font-semibold text-[#8b95a7]">{row.place}</span>{" "}
-                <span className="text-gold">{"★".repeat(row.stars)}</span>
-              </p>
-              <p className="mt-1 text-sm text-white/80">{row.text}</p>
-              <span className={row.status === "approved" ? "pill-active mt-2" : "pill-unpaid mt-2"}>
-                {row.status === "approved" ? "ACTIVE" : "UNPAID"}
-              </span>
-            </div>
-            <div className="flex shrink-0 gap-2">
-              {row.status === "pending" ? (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() =>
-                    void run(setTestimonyStatus({ data: { id: row.id, status: "approved" } }))
-                  }
-                  className="h-8 rounded-lg bg-red px-3 text-[10px] font-extrabold text-white disabled:opacity-60"
-                >
-                  APPROVE
-                </button>
-              ) : null}
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void run(deleteTestimony({ data: { id: row.id } }))}
-                className="h-8 rounded-lg border border-red/80 px-3 text-[10px] font-extrabold text-red disabled:opacity-60"
-              >
-                DELETE
-              </button>
-            </div>
-          </article>
-        ))
-      )}
     </section>
   );
 }

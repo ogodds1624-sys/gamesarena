@@ -306,6 +306,9 @@ is not counted as income. Earlier migrations retain their original contents.
 
 ## Admin access
 
+The footer testimony submission button/form and admin testimony review section
+are removed. Existing testimony records are retained unchanged.
+
 Migration `0019_reset_admin_revenue.sql` starts a new admin revenue period at its
 deployment time. Ghana and Nigeria daily/total revenue cards and daily history
 count only payments confirmed in this period (legacy records use creation time).
