@@ -9,6 +9,10 @@ const LABELS = { quick: "Quick session", popular: "Most popular", extended: "Ext
 function pricingFields(pricing: PricingSettings) {
   const fields = (country: (typeof COUNTRIES)[number]) => ({
     activationFee: String(pricing[country].activationFee),
+    virtualPackages: pricing[country].virtualPackages.map((pack) => ({
+      credits: pack.credits,
+      amount: String(pack.amount),
+    })),
     packages: pricing[country].packages.map((pack) => ({
       id: pack.id,
       price: String(pack.price),
@@ -49,6 +53,10 @@ export function AdminPricing({
     setSaved(false);
     const country = (name: (typeof COUNTRIES)[number]) => ({
       activationFee: Number(form[name].activationFee),
+      virtualPackages: form[name].virtualPackages.map((pack) => ({
+        credits: pack.credits,
+        amount: Number(pack.amount),
+      })),
       packages: form[name].packages.map((pack) => ({
         id: pack.id,
         price: Number(pack.price),
@@ -148,6 +156,51 @@ export function AdminPricing({
             );
           })}
         </fieldset>
+        <h2 className="mt-8 text-lg font-black">Instant Virtual packages</h2>
+        <p className="mt-2 text-sm text-[#9aa3b2]">
+          Set the price for each screenshot scan package. Credits do not expire; these are not timed
+          sessions. Saved prices update new purchases only.
+        </p>
+        <fieldset disabled={busy} className="mt-5 grid gap-5 disabled:opacity-60 md:grid-cols-2">
+          {COUNTRIES.map((country) => {
+            const currency = country === "Ghana" ? "GHS" : "NGN";
+            return (
+              <div key={country} className="rounded-2xl border border-white/10 p-4">
+                <h3 className="font-extrabold">
+                  {country} ({currency})
+                </h3>
+                {form[country].virtualPackages.map((pack) => (
+                  <label key={pack.credits} className="mt-4 block text-xs font-bold text-[#9aa3b2]">
+                    {pack.credits} {pack.credits === 1 ? "scan" : "scans"} price ({currency})
+                    <input
+                      required
+                      type="number"
+                      min="1"
+                      max="2147483647"
+                      step="1"
+                      value={pack.amount}
+                      onChange={(event) => {
+                        dirty.current = true;
+                        setSaved(false);
+                        const amount = event.target.value;
+                        setForm((current) => ({
+                          ...current,
+                          [country]: {
+                            ...current[country],
+                            virtualPackages: current[country].virtualPackages.map((item) =>
+                              item.credits === pack.credits ? { ...item, amount } : item,
+                            ),
+                          },
+                        }));
+                      }}
+                      className="mt-2 h-11 w-full rounded-lg border border-white/15 bg-ink px-3 text-sm text-white outline-none"
+                    />
+                  </label>
+                ))}
+              </div>
+            );
+          })}
+        </fieldset>
         <p className="mt-3 text-xs text-[#9aa3b2]">
           Use whole-number prices and 1-1,440 minutes. Each country's package prices must be
           different.
@@ -159,7 +212,7 @@ export function AdminPricing({
         ) : null}
         {saved ? (
           <p className="mt-3 text-sm text-[#7ddea0]" role="status">
-            Pricing saved. Customer pages will pick up the new prices and minutes.
+            Pricing saved. Customer pages will pick up the new session and Instant Virtual prices.
           </p>
         ) : null}
         <button
@@ -167,7 +220,7 @@ export function AdminPricing({
           disabled={busy}
           className="mt-4 h-11 rounded-lg bg-red px-5 text-sm font-extrabold text-white disabled:opacity-40"
         >
-          {busy ? "Saving..." : "Save prices & minutes"}
+          {busy ? "Saving..." : "Save all package prices & minutes"}
         </button>
       </form>
     </section>

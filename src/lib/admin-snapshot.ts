@@ -1283,7 +1283,7 @@ export const recordPayment = createServerFn({ method: "POST" })
     const quote =
       data.purpose === "virtual_credits"
         ? {
-            ...validateVirtualCreditPurchase(data.amount, Number(data.credits), link.country),
+            ...validateVirtualCreditPurchase(data.amount, Number(data.credits), link.country, await readPricing(sql)),
             minutes: null,
             packageId: null,
           }

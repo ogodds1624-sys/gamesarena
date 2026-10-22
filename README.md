@@ -19,14 +19,15 @@ historical payments or session-package prices. Admin pricing exposes both fees.
 Instant Virtual's **PLAY NOW** checks country selection and account linking
 and activation approval directly. Completed Ghana accounts
 with no credits go to `/virtual-packages`, not the Aviator session packages.
-The responsive credit menu presents Starter (1 credit / GHS 300), Plus (3 credits /
-GHS 400), and Max (5 credits / GHS 500). Each card opens its matching checkout;
+The responsive credit menu defaults to Starter (1 credit / GHS 300), Plus (3 credits /
+GHS 400), and Max (5 credits / GHS 500), with editable country prices in admin. Each card opens its matching checkout;
 the wallet panel shows the signed-in user's current balance.
 
 Nigerian accounts use the same Instant Virtual package, checkout, confirmation,
-and scanner pages. Their fixed conversion is **1 GHS = NGN 121**: Starter
-(1 credit) costs **NGN 36,300**, Plus (3 credits) **NGN 48,400**, and Max
-(5 credits) **NGN 60,500**. Checkout uses the admin's Nigerian bank accounts.
+and scanner pages. Initial prices use **1 GHS = NGN 121**: Starter
+(1 credit) defaults to **NGN 36,300**, Plus (3 credits) **NGN 48,400**, and Max
+(5 credits) **NGN 60,500**. Admin can override these independently of Ghana prices.
+Checkout uses the admin's Nigerian bank accounts.
 The server selects pricing from the account's saved country and rejects
 cross-country or incorrect amounts. Payment records retain country and amount;
 approval awards the same 1 / 3 / 5 credits in either country. No rate changes
@@ -275,8 +276,17 @@ Open **Admin > Pricing & Packages** to edit the price and session minutes for ea
 of the three tiers in Ghana and Nigeria. Prices
 must be positive whole currency units, package prices within a country must be
 distinct, and session lengths must be whole minutes from 1 to 1,440. Save both
-countries with **Save prices & minutes**; changes persist in the database and
+countries with **Save all package prices & minutes**; changes persist in the database and
 customer menus refresh through the existing storefront polling.
+
+Beneath Session packages, **Instant Virtual packages** provides independent Ghana
+and Nigeria price inputs for the fixed 1-, 3-, and 5-scan tiers. Prices must be
+positive whole currency units. Scan quantities and wallet behavior are unchanged.
+These prices use the existing `pricing_settings` JSON record; older settings
+without scan prices read the original defaults until saved, without requiring a
+new migration. Package menus, checkout quotes and server-side submission validation
+all use the saved country prices. Stale quotes are rejected before creating a
+payment. Already submitted or confirmed purchases retain their amount and credits.
 
 Migration `0011_admin_pricing.sql` retains historical GHS 45 / NGN 6,000
 activation fee settings and seeds the existing 3-, 10-, and 15-minute packages.
@@ -311,6 +321,15 @@ is not counted as income. Earlier migrations retain their original contents.
 
 ## Admin access
 
+The Block section includes User warnings: send a plain-text message (up to 1000
+characters) to an existing account email, review the latest 100 active warnings
+and their acknowledgement state, or remove a warning. Only an authenticated admin
+can send/list/remove warnings. Signed-in users (including blocked users) see
+their own unacknowledged notices above page content, refreshed every 15 seconds,
+and can select "I understand". Acknowledgements are owner-bound and persisted.
+Warnings do not alter account access, payments or credits. Removed warnings are
+hidden from both interfaces but retained for recordkeeping.
+
 The footer testimony submission button/form and admin testimony review section
 are removed. Existing testimony records are retained unchanged.
 
@@ -333,6 +352,13 @@ and replace both placeholders with private values. Set the same variables in
 the deployment platform before using the admin panel.
 
 ## Partner payouts
+
+The partner overview shows an **Amount paid out** card beside commission earnings
+for each currency (GHS and NGN). It totals that partner's saved payouts marked
+`paid` by an admin, excluding pending and rejected requests. Existing paid
+requests are included; the total does not reset on sign-out or refresh. The
+existing portal polling updates the cards after approval. Earnings and available
+balances are unchanged.
 
 Approved partners can request a payout in GHS or NGN for confirmed payments
 from the previous local calendar day (Ghana time for GHS and Nigeria time for

@@ -1,43 +1,62 @@
 import { z } from "zod";
 import type { PaymentPurpose } from "./activation.ts";
+import { VIRTUAL_CREDIT_OFFERS, VIRTUAL_NGN_PER_GHS } from "./virtual-credits.ts";
 
 export const PACKAGE_IDS = ["quick", "popular", "extended"] as const;
 export type PackageId = (typeof PACKAGE_IDS)[number];
 export type PricingCountry = "Ghana" | "Nigeria";
 
 const price = z.number().int().min(1).max(2_147_483_647);
-const countryPricing = z
-  .object({
-    activationFee: price,
-    packages: z
-      .array(
-        z.object({
-          id: z.enum(PACKAGE_IDS),
-          price,
-          minutes: z.number().int().min(1).max(1440),
-        }),
-      )
-      .length(3),
-  })
-  .superRefine((value, context) => {
-    if (new Set(value.packages.map((pack) => pack.id)).size !== 3) {
-      context.addIssue({ code: "custom", message: "Keep one of each package tier." });
-    }
-    if (new Set(value.packages.map((pack) => pack.price)).size !== 3) {
-      context.addIssue({
-        code: "custom",
-        message: "Package prices must be different within each country.",
-      });
-    }
-  });
+const defaultVirtualPackages = (country: PricingCountry) =>
+  VIRTUAL_CREDIT_OFFERS.map((offer) => ({
+    credits: offer.credits,
+    amount: offer.amount * (country === "Nigeria" ? VIRTUAL_NGN_PER_GHS : 1),
+  }));
+const virtualPackages = z
+  .array(z.object({ credits: z.union([z.literal(1), z.literal(3), z.literal(5)]), amount: price }))
+  .length(3)
+  .refine(
+    (offers) => new Set(offers.map((offer) => offer.credits)).size === 3,
+    "Keep one of each Instant Virtual package.",
+  );
+const countryPricing = (country: PricingCountry) =>
+  z
+    .object({
+      activationFee: price,
+      virtualPackages: virtualPackages.default(() => defaultVirtualPackages(country)),
+      packages: z
+        .array(
+          z.object({
+            id: z.enum(PACKAGE_IDS),
+            price,
+            minutes: z.number().int().min(1).max(1440),
+          }),
+        )
+        .length(3),
+    })
+    .superRefine((value, context) => {
+      if (new Set(value.packages.map((pack) => pack.id)).size !== 3) {
+        context.addIssue({ code: "custom", message: "Keep one of each package tier." });
+      }
+      if (new Set(value.packages.map((pack) => pack.price)).size !== 3) {
+        context.addIssue({
+          code: "custom",
+          message: "Package prices must be different within each country.",
+        });
+      }
+    });
 
-const pricingSchema = z.object({ Ghana: countryPricing, Nigeria: countryPricing });
+const pricingSchema = z.object({
+  Ghana: countryPricing("Ghana"),
+  Nigeria: countryPricing("Nigeria"),
+});
 export type PricingSettings = z.infer<typeof pricingSchema>;
 export type PaymentQuote = { amount: number; minutes: number | null; packageId: PackageId | null };
 
 export const DEFAULT_PRICING: PricingSettings = {
   Ghana: {
     activationFee: 55,
+    virtualPackages: defaultVirtualPackages("Ghana"),
     packages: [
       { id: "quick", price: 350, minutes: 3 },
       { id: "popular", price: 800, minutes: 10 },
@@ -46,6 +65,7 @@ export const DEFAULT_PRICING: PricingSettings = {
   },
   Nigeria: {
     activationFee: 6655,
+    virtualPackages: defaultVirtualPackages("Nigeria"),
     packages: [
       { id: "quick", price: 41986, minutes: 3 },
       { id: "popular", price: 95968, minutes: 10 },

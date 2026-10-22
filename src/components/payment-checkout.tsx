@@ -105,7 +105,7 @@ export function PaymentCheckout({
       setQuote(
         virtualCredits != null
           ? {
-              amount: virtualCreditOffer(virtualCredits, country).amount,
+              amount: virtualCreditOffer(virtualCredits, country, store.pricing).amount,
               minutes: null,
               packageId: null,
             }

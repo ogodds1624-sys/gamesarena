@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, CalendarDays, CircleDollarSign, Copy, Diamond, LayoutGrid, LogIn, Star, UserRoundPlus, Users, Wallet } from "lucide-react";
 import { SignalLoading } from "@/components/signal-loading";
+import { paidPartnerPayouts } from "@/lib/partner-earnings";
 import { applyPartner, getPartnerGate, getPartnerPortal, partnerLogin, requestPartnerPayout, type PartnerPortal } from "@/lib/admin-snapshot";
 
 export const Route = createFileRoute("/partner")({
@@ -400,7 +401,7 @@ function Overview({
           icon={<Users className="size-4" />}
         />
       </div>
-      <div className="stat-grid cols-3 mt-4">
+      <div className="stat-grid mt-4">
         <Stat
           label="TODAY'S REVENUE"
           value={`GHS ${portal.todayRevenue.toLocaleString("en-GH")}`}
@@ -420,9 +421,15 @@ function Overview({
           gold
           icon={<Star className="size-4" />}
         />
+        <Stat
+          label="AMOUNT PAID OUT"
+          value={`GHS ${paidPartnerPayouts(portal.payouts, "GHS").toLocaleString("en-GH")}`}
+          note="Total approved payouts. Pending and rejected requests are excluded."
+          icon={<Wallet className="size-4" />}
+        />
       </div>
       <DayList title="Daily Revenue" unit="GHS" days={portal.days} country="Ghana" />
-      <div className="stat-grid cols-3 mt-4">
+      <div className="stat-grid mt-4">
         <Stat
           label="TODAY'S REVENUE"
           value={`₦${portal.nigeriaTodayRevenue.toLocaleString("en-NG")}`}
@@ -441,6 +448,12 @@ function Overview({
           note={`${portal.commission}% commission on confirmed Nigeria payments`}
           gold
           icon={<Star className="size-4" />}
+        />
+        <Stat
+          label="AMOUNT PAID OUT"
+          value={`₦${paidPartnerPayouts(portal.payouts, "NGN").toLocaleString("en-NG")}`}
+          note="Total approved payouts. Pending and rejected requests are excluded."
+          icon={<Wallet className="size-4" />}
         />
       </div>
       <DayList title="Daily Revenue" unit="₦" days={portal.nigeriaDays} country="Nigeria" />

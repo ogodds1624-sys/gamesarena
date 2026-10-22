@@ -18,6 +18,15 @@ export function availableTotalPartnerEarnings(totalEarnings: number, reservedPay
   return Math.max(0, totalEarnings - reservedPayouts);
 }
 
+export function paidPartnerPayouts(
+  payouts: readonly { amount: number; currency: "GHS" | "NGN"; status: string }[],
+  currency: "GHS" | "NGN",
+) {
+  return payouts
+    .filter((payout) => payout.currency === currency && payout.status === "paid")
+    .reduce((sum, payout) => sum + payout.amount, 0);
+}
+
 export function previousSettlementDate(now: Date, timeZone: string) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,

@@ -88,6 +88,32 @@ test("payment quotes enforce the country's saved activation fee, package price, 
   );
 });
 
+test("legacy pricing retains Instant Virtual defaults and validates editable scan prices", () => {
+  const legacy = {
+    Ghana: {
+      activationFee: DEFAULT_PRICING.Ghana.activationFee,
+      packages: DEFAULT_PRICING.Ghana.packages,
+    },
+    Nigeria: {
+      activationFee: DEFAULT_PRICING.Nigeria.activationFee,
+      packages: DEFAULT_PRICING.Nigeria.packages,
+    },
+  };
+  assert.deepEqual(validatePricing(legacy), DEFAULT_PRICING);
+  for (const country of ["Ghana", "Nigeria"] as const) {
+    for (const amount of [0, -1, 1.5, NaN, Infinity, 2_147_483_648]) {
+      const pricing = structuredClone(DEFAULT_PRICING);
+      pricing[country].virtualPackages[0].amount = amount;
+      assert.throws(() => validatePricing(pricing), /Invalid pricing/);
+    }
+    const pricing = structuredClone(DEFAULT_PRICING);
+    pricing[country].virtualPackages[0].credits = 3;
+    assert.throws(() => validatePricing(pricing), /one of each Instant Virtual/);
+    pricing[country].virtualPackages.pop();
+    assert.throws(() => validatePricing(pricing), /Invalid pricing/);
+  }
+});
+
 test("pricing migration preserves historical purchases and saves survive new reads", async () => {
   const db = new PGlite();
   const query = async <T = Record<string, unknown>>(
@@ -138,6 +164,8 @@ test("pricing migration preserves historical purchases and saves survive new rea
     const pricing = structuredClone(DEFAULT_PRICING);
     pricing.Ghana.activationFee = 99;
     pricing.Nigeria.packages[2] = { id: "extended", price: 120000, minutes: 20 };
+    pricing.Ghana.virtualPackages[0].amount = 275;
+    pricing.Nigeria.virtualPackages[1].amount = 45000;
     await writePricing(sql, pricing);
     assert.deepEqual(await readPricing(sql), pricing);
     assert.deepEqual(

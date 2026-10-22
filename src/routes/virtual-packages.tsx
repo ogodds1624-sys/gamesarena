@@ -22,6 +22,7 @@ import {
   type VirtualCountry,
 } from "@/lib/virtual-credits";
 import { useBlocked } from "@/lib/blocked-users";
+import { useLiveStorefront } from "@/lib/storefront-live";
 
 export const Route = createFileRoute("/virtual-packages")({
   component: VirtualPackagesPage,
@@ -31,6 +32,7 @@ function VirtualPackagesPage() {
   const navigate = useNavigate();
   const { user, isPending } = useCurrentUserState();
   const blocked = useBlocked();
+  const store = useLiveStorefront();
   const [ready, setReady] = useState(false);
   const [country, setCountry] = useState<VirtualCountry | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
@@ -84,7 +86,7 @@ function VirtualPackagesPage() {
     };
   }, [isPending, user?.id, user?.isDevFallback, navigate]);
 
-  if (!ready || !country) {
+  if (!ready || !country || !store) {
     return (
       <main className="grid min-h-dvh place-items-center bg-ink px-5 text-white">
         {error ? <p role="alert">{error}</p> : <SignalLoading label="Checking account" />}
@@ -158,7 +160,7 @@ function VirtualPackagesPage() {
         </div>
         <div className="virtual-shop-grid">
           {VIRTUAL_CREDIT_OFFERS.map((baseOffer, index) => {
-            const offer = virtualCreditOffer(baseOffer.credits, country);
+            const offer = virtualCreditOffer(baseOffer.credits, country, store.pricing);
             const currency = country === "Nigeria" ? "NGN" : "GHS";
             return (
               <article

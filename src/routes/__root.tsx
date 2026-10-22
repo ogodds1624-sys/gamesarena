@@ -17,6 +17,7 @@ import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { PendingPaymentWatcher } from "@/components/pending-payment-watcher";
 import { SupportChat } from "@/components/support-chat";
 import { AppRefresh } from "@/components/app-refresh";
+import { UserWarnings } from "@/components/user-warnings";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "GAMES HUB";
@@ -239,6 +240,7 @@ export const Route = createRootRoute({
             <BlockWatcher />
             <PendingPaymentWatcher />
             <TapBounce />
+            <UserWarnings />
             <Outlet />
             <SupportChat />
             <AppRefresh />

@@ -7,9 +7,26 @@ import {
   commissionAmount,
   partnerSettlementBalances,
   partnerEarnings,
+  paidPartnerPayouts,
   previousSettlementDate,
   settlementGross,
 } from "./partner-earnings.ts";
+
+test("paid-out totals start at zero and keep currencies separate", () => {
+  assert.equal(paidPartnerPayouts([], "GHS"), 0);
+  const payouts = [
+    { amount: 120, currency: "GHS" as const, status: "paid" },
+    { amount: 80, currency: "GHS" as const, status: "paid" },
+    { amount: 9000, currency: "NGN" as const, status: "paid" },
+    { amount: 50, currency: "GHS" as const, status: "pending" },
+    { amount: 60, currency: "GHS" as const, status: "rejected" },
+  ];
+  assert.equal(paidPartnerPayouts(payouts, "GHS"), 200);
+  assert.equal(paidPartnerPayouts(payouts, "NGN"), 9000);
+  payouts[3].status = "paid";
+  assert.equal(paidPartnerPayouts(payouts, "GHS"), 250);
+  assert.equal(paidPartnerPayouts(payouts, "GHS"), 250);
+});
 
 test("gives the partner their commission percentage of gross revenue and leaves the rest to admin", () => {
   assert.equal(commissionAmount(1000, 65), 650);

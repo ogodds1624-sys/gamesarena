@@ -1,3 +1,5 @@
+import type { PricingSettings } from "./pricing.ts";
+
 export const VIRTUAL_CREDIT_OFFERS = [
   { credits: 1, amount: 300 },
   { credits: 3, amount: 400 },
@@ -14,7 +16,13 @@ export type VirtualCreditOffer = {
 export function virtualCreditOffer(
   credits: number,
   country: VirtualCountry = "Ghana",
+  pricing?: PricingSettings,
 ): VirtualCreditOffer {
+  if (pricing) {
+    const saved = pricing[country].virtualPackages.find((item) => item.credits === credits);
+    if (!saved) throw new Error("Choose a valid Instant Virtual credit package.");
+    return { ...saved };
+  }
   const offer = VIRTUAL_CREDIT_OFFERS.find((item) => item.credits === credits);
   if (!offer) throw new Error("Choose a valid Instant Virtual credit package.");
   return {
@@ -27,8 +35,9 @@ export function validateVirtualCreditPurchase(
   amount: number,
   credits: number,
   country: VirtualCountry = "Ghana",
+  pricing?: PricingSettings,
 ): VirtualCreditOffer {
-  const offer = virtualCreditOffer(credits, country);
+  const offer = virtualCreditOffer(credits, country, pricing);
   if (amount !== offer.amount) {
     throw new Error(
       "The Instant Virtual credit price changed. Go back and choose the package again.",

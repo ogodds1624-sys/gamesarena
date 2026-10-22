@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import { PGlite } from "@electric-sql/pglite";
+import { DEFAULT_PRICING } from "./pricing.ts";
 import {
   validateVirtualCreditPurchase,
   virtualCreditOffer,
@@ -57,6 +58,27 @@ test("Nigerian Instant Virtual offers use 121 NGN per GHS without changing Ghana
     );
   }
   assert.throws(() => virtualCreditOffer(2, "Nigeria"), /valid Instant Virtual/);
+});
+
+test("saved country prices drive offers and reject stale or cross-country checkout quotes", () => {
+  const pricing = structuredClone(DEFAULT_PRICING);
+  pricing.Ghana.virtualPackages[1].amount = 425;
+  pricing.Nigeria.virtualPackages[1].amount = 51000;
+  assert.deepEqual(virtualCreditOffer(3, "Ghana", pricing), { credits: 3, amount: 425 });
+  assert.deepEqual(virtualCreditOffer(3, "Nigeria", pricing), { credits: 3, amount: 51000 });
+  assert.deepEqual(validateVirtualCreditPurchase(425, 3, "Ghana", pricing), {
+    credits: 3,
+    amount: 425,
+  });
+  assert.deepEqual(validateVirtualCreditPurchase(51000, 3, "Nigeria", pricing), {
+    credits: 3,
+    amount: 51000,
+  });
+  assert.throws(() => validateVirtualCreditPurchase(400, 3, "Ghana", pricing), /price changed/);
+  assert.throws(() => validateVirtualCreditPurchase(48400, 3, "Nigeria", pricing), /price changed/);
+  assert.throws(() => validateVirtualCreditPurchase(425, 3, "Nigeria", pricing), /price changed/);
+  assert.throws(() => validateVirtualCreditPurchase(51000, 3, "Ghana", pricing), /price changed/);
+  assert.equal(virtualCreditOffer(1, "Ghana", pricing).amount, 300);
 });
 
 test("wallet awards only confirmed payments, spends idempotently, and reverses unused credits", async () => {

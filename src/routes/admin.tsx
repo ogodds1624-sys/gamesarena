@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { WarningDesk } from "@/components/user-warnings";
 import {
   ArrowLeftRight,
   Ban,
@@ -1956,6 +1957,7 @@ function BlockDesk({
           </li>
         ))}
       </ul>
+      <WarningDesk />
     </section>
   );
 }
