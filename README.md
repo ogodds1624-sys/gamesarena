@@ -125,7 +125,9 @@ Missing optional match IDs, times, providers, sports or statistics do not block
 otherwise readable selections. Ambiguous selection details still exclude the row.
 If fewer than two matches qualify, request a clearer screenshot without charging.
 Claude transcribes and checks visible evidence, not independent future outcomes.
-The compact results show each selected outcome, odds and match with a brief risk note.
+The compact results show each selected outcome, odds and match without per-card
+footer text. When both picks are available, a short note says to play the games
+as singles and not combine both predictions.
 Each pick uses a red/black/white matchup card. A successful screenshot costs one
 credit for two match picks, not one credit per pick. When the
 balance reaches zero, a footer links to the Instant Virtual credit packages.

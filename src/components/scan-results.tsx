@@ -91,21 +91,16 @@ export function ScanResults({ job, working = false }: { job: ScanJob; working?: 
                         <span>visible odds</span>
                       </div>
                     </div>
-                    <footer className="scanner-pick-footer">
-                      Market favourite / Verify teams and odds
-                    </footer>
                   </li>
                 );
               })}
             </ol>
           )}
-          <p className="mt-4 text-xs text-white/55">
-            {report.rulesVersion === RANKING_RULES.version &&
-            job.result?.rulesVersion === RANKING_RULES.version
-              ? "Two randomly selected matches; lowest-odds picks, not guaranteed winners."
-              : "Odds-based picks, not guaranteed winners."}{" "}
-            Verify teams and odds.
-          </p>
+          {report.rankings.length === RANKING_RULES.maximumSelections ? (
+            <p className="mt-4 text-xs text-white/55">
+              Play these games as singles. Do not combine both predictions.
+            </p>
+          ) : null}
         </>
       )}
     </section>
