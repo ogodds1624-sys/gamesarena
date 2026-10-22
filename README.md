@@ -4,6 +4,14 @@ A responsive casino dashboard for game outcome predictions, user management, pay
 
 ## Account activation
 
+After activation approval, every account returns to the front page (`/`) while
+remaining signed in, with **Sign out** in the header. This applies to Ghana and
+Nigeria, whether activation was started for Aviator or Instant Virtual, including
+approval detected on another page or reopening activation after approval. The
+previous game continuation is cleared so users can choose either game from home.
+Rejected activations still return to activation/retry; package payment redirects
+are unchanged.
+
 New email signups land on the homepage with the signed-in account and Sign out
 control in the top-right header, even before SportyBet linking. Country selection,
 linking and activation are still required when opening a game. Existing login

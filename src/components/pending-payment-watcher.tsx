@@ -1,8 +1,7 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { SignalLoading } from "@/components/signal-loading";
-import { getPaymentStatus, getSportyLink } from "@/lib/admin-snapshot";
-import { openTask } from "@/lib/task-order";
+import { getPaymentStatus } from "@/lib/admin-snapshot";
 import { clearPendingPayment, confirmPendingPayment, readPendingPayment } from "@/lib/desk-session";
 
 // Pages that run their own waiting screen.
@@ -51,16 +50,10 @@ export function PendingPaymentWatcher() {
             clearPendingPayment();
             setState("none");
             if (row.status === "rejected") void navigate({ to: "/activation" });
-            else
-              void getSportyLink()
-                .then((link) => openTask(navigate, link))
-                .catch((err: unknown) => {
-                  setError(
-                    err instanceof Error
-                      ? err.message
-                      : "Could not open packages. Reload to continue.",
-                  );
-                });
+            else {
+              window.sessionStorage.removeItem("games-hub-next-game");
+              void navigate({ to: "/", replace: true });
+            }
             return;
           }
           if (row.status === "rejected") {

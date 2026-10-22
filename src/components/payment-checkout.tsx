@@ -68,7 +68,12 @@ export function PaymentCheckout({
           void openTask(navigate, link);
           return;
         }
-        if ((activation && link.activated) || (!activation && !link.activated)) {
+        if (activation && link.activated) {
+          window.sessionStorage.removeItem("games-hub-next-game");
+          void navigate({ to: "/", replace: true });
+          return;
+        }
+        if (!activation && !link.activated) {
           void openTask(navigate, link, virtualCredits != null ? "virtual" : undefined);
           return;
         }
@@ -200,13 +205,8 @@ export function PaymentCheckout({
     if (result === "confirmed") {
       if (activation) {
         clearPendingPayment();
-        void getSportyLink()
-          .then((link) => openTask(navigate, link))
-          .catch((err: unknown) => {
-            setError(
-              err instanceof Error ? err.message : "Could not open packages. Reload to continue.",
-            );
-          });
+        window.sessionStorage.removeItem("games-hub-next-game");
+        void navigate({ to: "/", replace: true });
         return;
       }
       if (virtualCredits != null) {
