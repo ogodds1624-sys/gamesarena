@@ -113,8 +113,12 @@ Two-way markets cannot contain a draw price. The lowest odds must be at least
 are selected by ascending displayed odds. Draw favourites, duplicate match rows
 and repeated selected teams are excluded; a missing second pick is never forced.
 Claude transcribes and checks visible evidence, not independent future outcomes.
-The results show only the selected matches' evidence; full extraction is retained
-privately. Saved classified reports are re-ranked for display using these rules. No
+The compact results show each selected team, odds and match with a brief risk note.
+Each pick uses a red/black/white matchup card. One readable screenshot costs one
+credit for up to two qualifying team picks, not one credit per pick. When the
+balance reaches zero, a footer links to the Instant Virtual credit packages.
+Detailed extraction, warnings and limitations remain in the private report but
+are not displayed. Saved classified reports are re-ranked for display using these rules. No
 historical prediction dataset is connected, and no winning probabilities,
 invented statistics or guarantees are produced. Unclear screenshots or missing
 odds may therefore produce no qualified selection.

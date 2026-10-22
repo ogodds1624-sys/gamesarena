@@ -7,7 +7,6 @@ import {
   LoaderCircle,
   Camera,
   ScanLine,
-  ShieldCheck,
   CheckCircle2,
 } from "lucide-react";
 import { getSportyLink, getVirtualCreditBalance, getVirtualScanAccess } from "@/lib/admin-snapshot";
@@ -281,30 +280,6 @@ function VirtualScan() {
             Get credits
           </Link>
         </nav>
-        <header className="virtual-shop-heading scanner-hero">
-          <p className="virtual-shop-eyebrow">
-            <span /> SPORTYBET INSTANT FOOTBALL SCANNER
-          </p>
-          <h1>
-            Your game.
-            <br />
-            <span>A clearer view.</span>
-          </h1>
-          <p>
-            Upload SportyBet Instant Football screenshots in light or dark mode to compare up to two
-            team favourites from different matches using visible odds and AI-read evidence. Picks
-            are not guaranteed winners. Normal football screenshots are not supported. Scanning
-            starts automatically after upload.
-          </p>
-          <div className="scanner-hero-badges">
-            <span>
-              <ScanLine size={14} aria-hidden /> Instant Football only
-            </span>
-            <span>
-              <ShieldCheck size={14} aria-hidden /> Private scan results
-            </span>
-          </div>
-        </header>
         <div className="virtual-shop-wallet">
           <Coins size={26} className="text-red-400" aria-hidden />
           <div>
@@ -312,20 +287,11 @@ function VirtualScan() {
             <strong>{balance} credits</strong>
           </div>
           <span className="virtual-shop-wallet-note">
-            1 credit per readable screenshot.
+            1 scan / 1 credit / up to 2 team picks.
             <br />
             Unusable or failed scans are not charged.
           </span>
         </div>
-        {balance === 0 ? (
-          <p className="scanner-notice mt-5">
-            No credits remaining.{" "}
-            <Link to="/virtual-packages" className="font-bold underline">
-              Choose a credit pack
-            </Link>
-            .
-          </p>
-        ) : null}
         <section className="scanner-panel mt-7" aria-labelledby="scanner-upload">
           <div className="scanner-upload-heading">
             <span className="scanner-step-number">01</span>
@@ -333,7 +299,6 @@ function VirtualScan() {
               <h2 id="scanner-upload" className="text-xl font-black">
                 Upload screenshots
               </h2>
-              <p>Choose your images. We take it from here.</p>
             </div>
             <span className="scanner-auto-tag">AUTO SCAN</span>
           </div>
@@ -370,14 +335,11 @@ function VirtualScan() {
               }}
             />
             <p className="mt-3 text-xs text-white/55">
-              Up to 5 images / 3 MB each / static PNG, JPEG, WebP / 20 megapixels maximum
+              Up to 5 images / 3 MB each / PNG, JPEG or WebP
             </p>
           </label>
           <p className="mt-4 text-xs leading-relaxed text-white/55">
-            Keep the Instant Football heading and 1X2 odds visible. Crop out personal details.
-            Uploading sends game screenshots to the AI provider. Encrypted images are kept
-            temporarily for processing, then removed; your results are saved privately. Readable
-            fixtures can use a credit even if no winner selection qualifies.
+            Instant Football only. Crop personal details; screenshots are sent to AI for processing.
           </p>
           {uploads.length ? (
             <ul className="scanner-uploads mt-5" aria-live="polite">
@@ -501,6 +463,16 @@ function VirtualScan() {
             </div>
           )}
         </div>
+        {balance === 0 ? (
+          <footer className="scanner-credit-footer" aria-label="Buy more scan credits">
+            <Coins size={32} aria-hidden />
+            <h2>No credits remaining</h2>
+            <p>Get more credits to scan another screenshot.</p>
+            <Link to="/virtual-packages" className="scanner-primary">
+              Buy more credits
+            </Link>
+          </footer>
+        ) : null}
       </div>
     </main>
   );
