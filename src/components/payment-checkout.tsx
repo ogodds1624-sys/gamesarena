@@ -15,6 +15,8 @@ import { storedReferral } from "@/lib/remember-ref";
 import { openTask } from "@/lib/task-order";
 import { paymentQuote, type PaymentQuote } from "@/lib/pricing";
 import { virtualCreditOffer } from "@/lib/virtual-credits";
+import { PaymentPayerField } from "@/components/payment-payer-field";
+import { validatePaymentProof } from "@/lib/payment-proof";
 
 export function PaymentCheckout({
   activation = false,
@@ -43,6 +45,7 @@ export function PaymentCheckout({
   const [choice, setChoice] = useState(0);
   const [receipt, setReceipt] = useState("");
   const [receiptName, setReceiptName] = useState("");
+  const [payerName, setPayerName] = useState("");
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentId, setPaymentId] = useState<string | null>(null);
@@ -327,12 +330,11 @@ export function PaymentCheckout({
         virtualCredits != null ? "virtual_credits" : activation ? "activation" : "session";
       const saved = await recordPayment({
         data: {
-          name: "",
+          ...validatePaymentProof(payerName, receipt),
           amount: quote.amount,
           minutes: quote.minutes,
           packageId: quote.packageId ?? undefined,
           credits: virtualCredits,
-          receipt,
           referredBy: storedReferral(),
           purpose,
         },
@@ -540,10 +542,17 @@ export function PaymentCheckout({
                   onChange={(event) => onReceipt(event.target.files?.[0])}
                   className="payment-file-input"
                 />
+                <PaymentPayerField
+                  value={payerName}
+                  onChange={setPayerName}
+                  bankTransfer={bankTransfer}
+                />
                 {error ? <p className="mt-2 text-sm text-red">{error}</p> : null}
                 <button
                   type="submit"
-                  disabled={!allowed || !receipt || sending || Boolean(paymentId)}
+                  disabled={
+                    !allowed || !receipt || !payerName.trim() || sending || Boolean(paymentId)
+                  }
                   className="payment-submit mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-xl text-base font-extrabold tracking-wide disabled:opacity-70"
                 >
                   {sending ? (

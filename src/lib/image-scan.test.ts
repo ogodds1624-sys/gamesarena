@@ -151,14 +151,14 @@ test("rankings use complete visible prices only, without invented probabilities"
     report.rankings.map((item) => [item.rank, item.fixtureIndex, item.option]),
     [
       [1, 1, "away"],
-      [2, 0, "home"],
+      [2, 2, "draw"],
     ],
   );
   assert.equal("probability" in report.rankings[0], false);
   assert.match(report.limitations.join(" "), /No independent historical dataset/);
 });
 
-test("two-team picks exclude duplicate matches, repeated teams and draw favourites without forcing picks", () => {
+test("two outcome picks exclude duplicate matches but allow repeated teams and draws", () => {
   const report = rankFixtures(
     extraction([
       fixture(),
@@ -170,14 +170,16 @@ test("two-team picks exclude duplicate matches, repeated teams and draw favourit
   );
   assert.deepEqual(
     report.rankings.map((pick) => pick.label),
-    ["Team A", "Team D"],
+    ["Team A", "Team A"],
   );
   assert.equal(report.excluded.length, 3);
   assert.equal(rankFixtures(extraction([fixture()])).rankings.length, 1);
-  assert.equal(rankFixtures(extraction([fixture({ drawOdds: 1.2 })])).rankings.length, 0);
+  const draw = rankFixtures(extraction([fixture({ drawOdds: 1.2 })]));
+  assert.equal(draw.rankings[0].option, "draw");
+  assert.equal(draw.rankings[0].odds, 1.2);
 });
 
-test("missing odds, uncertainty, ambiguous markets, ties and non-upcoming fixtures are excluded", () => {
+test("missing odds, uncertainty, ambiguous markets and non-upcoming fixtures are excluded", () => {
   const report = rankFixtures(
     extraction([
       fixture({ home: null }),
@@ -185,8 +187,6 @@ test("missing odds, uncertainty, ambiguous markets, ties and non-upcoming fixtur
       fixture({ marketKind: "unknown" }),
       fixture({ marketKind: "other", market: "Over 2.5" }),
       fixture({ uncertainFields: ["odds partially cropped"] }),
-      fixture({ homeOdds: 1.8, awayOdds: 1.8 }),
-      fixture({ homeOdds: 1.8, awayOdds: 1.84 }),
       fixture({ status: "finished" }),
       fixture({ status: "live" }),
       fixture({ status: "unknown" }),
@@ -194,7 +194,7 @@ test("missing odds, uncertainty, ambiguous markets, ties and non-upcoming fixtur
     ]),
   );
   assert.equal(report.rankings.length, 0);
-  assert.equal(report.excluded.length, 11);
+  assert.equal(report.excluded.length, 9);
   const twoWay = rankFixtures(
     extraction([fixture({ marketKind: "two_way_winner", drawOdds: null })]),
   );
@@ -204,6 +204,31 @@ test("missing odds, uncertainty, ambiguous markets, ties and non-upcoming fixtur
     1,
   );
   assert.equal(rankFixtures({ ...extraction(), quality: "unreadable" }).rankings.length, 0);
+});
+
+test("close odds and ties still select the lowest displayed outcome deterministically", () => {
+  for (const patch of [
+    { homeOdds: 1.8, awayOdds: 1.8 },
+    { homeOdds: 1.8, awayOdds: 1.84 },
+    { homeOdds: 1.8, drawOdds: 1.8, awayOdds: 1.8 },
+  ]) {
+    const report = rankFixtures(extraction([fixture(patch)]));
+    assert.equal(report.rankings[0].option, "home");
+    assert.equal(report.rankings[0].odds, 1.8);
+  }
+  const report = rankFixtures(
+    extraction([
+      fixture({ drawOdds: 1.2 }),
+      fixture({ home: "Team C", away: "Team D", homeOdds: 4, awayOdds: 1.3 }),
+    ]),
+  );
+  assert.deepEqual(
+    report.rankings.map(({ option, odds }) => [option, odds]),
+    [
+      ["draw", 1.2],
+      ["away", 1.3],
+    ],
+  );
 });
 
 test("image types and bounds reject unsupported data", () => {
@@ -368,7 +393,7 @@ test("durable queue isolates owners, deduplicates, charges atomically, retries l
     let calls = 0;
     const analyze = async () => {
       calls++;
-      return extraction();
+      return extraction([fixture(), fixture({ home: "Team C", away: "Team D", drawOdds: 1.5 })]);
     };
     assert.equal(await processScanJob(sql, key, analyze, first, "u2"), false);
     assert.equal(calls, 0);
@@ -382,7 +407,7 @@ test("durable queue isolates owners, deduplicates, charges atomically, retries l
     assert.equal(saved.status, "completed");
     assert.equal(saved.balance, 4);
     assert.equal(saved.charged, true);
-    assert.equal(saved.result?.rankings.length, 1);
+    assert.equal(saved.result?.rankings.length, 2);
     assert.equal("image_payload" in saved, false);
     assert.equal((await enqueue(randomUUID(), "u1", first)).job_id, first);
     assert.equal(calls, 1);
@@ -422,6 +447,23 @@ test("durable queue isolates owners, deduplicates, charges atomically, retries l
     );
     assert.equal((await readScanJobs(sql, "u1", review))[0].status, "needs_review");
     assert.equal((await readScanJobs(sql, "u1", review))[0].charged, false);
+    for (const input of [
+      extraction([fixture()]),
+      extraction([fixture(), fixture()]),
+      extraction([fixture({ awayOdds: null }), fixture({ home: "Team C", away: "Team D" })]),
+    ]) {
+      const id = randomUUID();
+      await enqueue(id);
+      await processScanJob(sql, key, async () => input, id, "u1");
+      const [insufficient] = await readScanJobs(sql, "u1", id);
+      assert.equal(insufficient.status, "needs_review");
+      assert.equal(insufficient.charged, false);
+      assert.equal(insufficient.balance, 4);
+      const [wallet] = await sql<{
+        balance: number;
+      }>`select balance from virtual_credit_wallets where user_id='u1'`;
+      assert.equal(wallet.balance, 4);
+    }
     for (const screenshotType of ["normal_football", "other", "unknown"] as const) {
       const id = randomUUID();
       await enqueue(id);

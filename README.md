@@ -35,6 +35,12 @@ opens the Instant Virtual scanner when credits are available.
 
 ## Instant Virtual screenshot scanning
 
+Payment checkout requires a receipt and the sender's MoMo/bank account holder
+name before "I've sent the money" is enabled. This applies to Ghana and Nigeria,
+including activation, session packages and Instant Virtual credits. The name is
+validated server-side, saved with the payment and displayed as "Paid from" in
+admin payment review. Existing payment records remain unchanged.
+
 Approved Instant Virtual users open `/virtual-scan`, select or drop up to **five
 PNG, JPEG, or WebP screenshots, each at most 3 MB**, and scanning starts
 automatically. The mobile file picker supports the device gallery. Each upload
@@ -108,14 +114,16 @@ inventing a kickoff time. Neither light nor dark theme changes ranking rules.
 Rankings are **displayed market favourites, not reliable outcome predictions**.
 Only visibly upcoming, clearly identified winner markets with distinct readable
 participants, complete applicable odds and no flagged uncertain fields qualify.
-Two-way markets cannot contain a draw price. The lowest odds must be at least
-0.05 below the next option. At most two team favourites from different matches
-are selected by ascending displayed odds. Draw favourites, duplicate match rows
-and repeated selected teams are excluded; a missing second pick is never forced.
+Two-way markets cannot contain a draw price. Each match selects its lowest-odds
+Home, Draw or Away outcome, with no minimum odds gap. Exact ties use stable
+Home, Draw, Away order (not a claim that one tied outcome is safer).
+The two different matches with the lowest selected odds are shown.
+Duplicate match rows are excluded; repeated teams in different matches are allowed.
+If fewer than two matches qualify, request a clearer screenshot without charging.
 Claude transcribes and checks visible evidence, not independent future outcomes.
-The compact results show each selected team, odds and match with a brief risk note.
-Each pick uses a red/black/white matchup card. One readable screenshot costs one
-credit for up to two qualifying team picks, not one credit per pick. When the
+The compact results show each selected outcome, odds and match with a brief risk note.
+Each pick uses a red/black/white matchup card. A successful screenshot costs one
+credit for two match picks, not one credit per pick. When the
 balance reaches zero, a footer links to the Instant Virtual credit packages.
 Detailed extraction, warnings and limitations remain in the private report but
 are not displayed. Saved classified reports are re-ranked for display using these rules. No
@@ -152,10 +160,10 @@ odds may therefore produce no qualified selection.
   five jobs may be pending per user, 20 new jobs per rolling hour, and 40 upload
   requests per fixed hour (including invalid/retried uploads). Limits live in
   PostgreSQL rather than process memory.
-- **One credit per screenshot is deducted atomically only when a usable match
-  extraction is saved**: readable home/away names and market in clear/partial
-  evidence. A readable extraction still costs one credit if no ranking qualifies.
-  Unreadable/unrelated images and failures cost nothing.
+- **One credit per screenshot is deducted atomically only when two qualifying
+  match selections are saved.** Fewer than two readable eligible matches,
+  unreadable/unrelated images and failures cost nothing. Existing charged
+  historical reports are retained without changing their past charges.
 - Request UUIDs and per-user normalized-image hashes deduplicate pending and
   successful jobs, preventing double charges after lost responses or repeated
   uploads. Use **Retry upload** with the same ID after a connection failure;

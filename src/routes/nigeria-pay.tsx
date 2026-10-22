@@ -14,6 +14,8 @@ import {
 import { storedReferral } from "@/lib/remember-ref";
 import { openTask } from "@/lib/task-order";
 import type { PackageId } from "@/lib/pricing";
+import { PaymentPayerField } from "@/components/payment-payer-field";
+import { validatePaymentProof } from "@/lib/payment-proof";
 
 export const Route = createFileRoute("/nigeria-pay")({
   component: NigeriaPayPage,
@@ -40,6 +42,7 @@ function NigeriaPayPage() {
   const [copied, setCopied] = useState(false);
   const [receiptName, setReceiptName] = useState("");
   const [receipt, setReceipt] = useState("");
+  const [payerName, setPayerName] = useState("");
   const [alertOn, setAlertOn] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [waiting, setWaiting] = useState(false);
@@ -209,7 +212,13 @@ function NigeriaPayPage() {
     setSending(true);
     try {
       const saved = await recordPayment({
-        data: { name: "", amount, minutes, packageId, receipt, referredBy: storedReferral() },
+        data: {
+          ...validatePaymentProof(payerName, receipt),
+          amount,
+          minutes,
+          packageId,
+          referredBy: storedReferral(),
+        },
       });
       setAmount(saved.amount);
       setMinutes(saved.minutes);
@@ -653,10 +662,11 @@ function NigeriaPayPage() {
               <p className="mt-1 text-xs text-white/50">
                 Any screenshot size is accepted, including files over 1MB.
               </p>
+              <PaymentPayerField value={payerName} onChange={setPayerName} bankTransfer />
               {error ? <p className="mt-2 text-sm text-red">{error}</p> : null}
               <button
                 type="submit"
-                disabled={!receipt || sending || Boolean(paymentId)}
+                disabled={!receipt || !payerName.trim() || sending || Boolean(paymentId)}
                 className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-red text-base font-extrabold tracking-wide text-white disabled:opacity-70"
               >
                 {sending ? (

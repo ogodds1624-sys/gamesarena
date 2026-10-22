@@ -5,6 +5,7 @@ import { isNairaAmount } from "@/lib/desk-session";
 import type { PaymentPurpose } from "@/lib/activation";
 import { validatePricing, validatePaymentQuote, type PricingSettings } from "@/lib/pricing";
 import { validateVirtualCreditPurchase } from "@/lib/virtual-credits";
+import { validatePaymentProof } from "@/lib/payment-proof";
 import {
   adminEarnings,
   availablePartnerEarnings,
@@ -1218,16 +1219,14 @@ export const recordPayment = createServerFn({ method: "POST" })
       minutes?: number | null;
       credits?: number;
     }) => {
-      const name = data?.name?.trim() ?? "";
+      const { name, receipt } = validatePaymentProof(data?.name, data?.receipt);
       const amount = Number(data?.amount);
-      const receipt = typeof data?.receipt === "string" ? data.receipt : "";
       const referredBy = String(data?.referredBy ?? "")
         .trim()
         .slice(0, 80);
       const purpose = data.purpose ?? "session";
       if (purpose !== "session" && purpose !== "activation" && purpose !== "virtual_credits")
         throw new Error("Unknown payment purpose.");
-      if (!receipt && name.length < 3) throw new Error("Attach a screenshot of your payment.");
       if (!Number.isInteger(amount) || amount < 1 || amount > 2_147_483_647)
         throw new Error("Enter a valid payment amount.");
       if (data.packageId !== undefined && typeof data.packageId !== "string")

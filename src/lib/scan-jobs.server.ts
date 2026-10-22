@@ -3,7 +3,7 @@ import type { Sql } from "./db";
 import {
   jobSchema,
   rankFixtures,
-  screenshotRejection,
+  RANKING_RULES,
   type ScanJob,
   type Extraction,
 } from "./image-scan.ts";
@@ -74,10 +74,7 @@ export async function processScanJob(
     if (!job.image_payload) throw new Error("Queued image is missing.");
     const extraction = await analyze(decryptScanImage(job.image_payload, key), job.model);
     const report = rankFixtures(extraction);
-    const usable =
-      screenshotRejection(extraction) === null &&
-      !["unreadable", "unrelated"].includes(extraction.quality) &&
-      extraction.fixtures.some((fixture) => fixture.home && fixture.away && fixture.market);
+    const usable = report.rankings.length === RANKING_RULES.maximumSelections;
     await sql`select finish_structured_scan(
       ${job.id}::uuid,${job.user_id},${token}::uuid,${JSON.stringify(report)}::jsonb,${usable}
     )`;

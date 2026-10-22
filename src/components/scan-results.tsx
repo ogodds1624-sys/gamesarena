@@ -2,6 +2,7 @@ import { ScanLine, Target } from "lucide-react";
 import {
   extractionSchema,
   rankFixtures,
+  RANKING_RULES,
   screenshotRejection,
   type ScanJob,
 } from "@/lib/image-scan";
@@ -36,9 +37,11 @@ export function ScanResults({ job, working = false }: { job: ScanJob; working?: 
         </p>
       ) : (
         <>
-          {!report.rankings.length ? (
+          {report.rankings.length < RANKING_RULES.maximumSelections ? (
             <p className="scanner-notice mt-4">
-              No clear team selections found. Try a clearer Instant Football screenshot.
+              Upload a clearer Instant Football screenshot showing at least two different matches
+              and all Home, Draw and Away odds.
+              {!job.charged ? " No credit was used." : ""}
             </p>
           ) : (
             <ol className="mt-4 grid gap-3">
@@ -74,7 +77,11 @@ export function ScanResults({ job, working = false }: { job: ScanJob; working?: 
                     <div className="scanner-pick-choice">
                       <div>
                         <p>OUR PICK</p>
-                        <strong>{selection.label} Win</strong>
+                        <strong>
+                          {selection.option === "draw"
+                            ? "Draw (X)"
+                            : `${selection.label} - ${selection.option === "home" ? "Home (1)" : "Away (2)"}`}
+                        </strong>
                       </div>
                       <div className="scanner-pick-price">
                         <strong>{selection.odds}</strong>
@@ -89,9 +96,6 @@ export function ScanResults({ job, working = false }: { job: ScanJob; working?: 
               })}
             </ol>
           )}
-          {report.rankings.length === 1 ? (
-            <p className="mt-3 text-xs text-white/55">Only one team qualifies.</p>
-          ) : null}
           <p className="mt-4 text-xs text-white/55">
             Odds-based picks, not guaranteed winners. Verify teams and odds.
           </p>

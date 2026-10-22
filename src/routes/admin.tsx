@@ -1711,6 +1711,11 @@ function TransactionHistory({
                     </p>
                   </div>
                   <div className="min-w-0">
+                    {payment.payerName ? (
+                      <p className="mb-2 break-words text-xs text-[#8b95a7]">
+                        Paid from: {payment.payerName}
+                      </p>
+                    ) : null}
                     {payment.hasReceipt ? (
                       <button
                         type="button"

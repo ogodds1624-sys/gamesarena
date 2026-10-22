@@ -76,8 +76,7 @@ export function screenshotRejection(
 }
 
 export const RANKING_RULES = {
-  version: "sportybet-instant-football-two-teams-v3",
-  minimumOddsGap: 0.05,
+  version: "sportybet-instant-football-two-outcomes-v4",
   maximumSelections: 2,
 } as const;
 const rankingSchema = z.object({
@@ -136,24 +135,11 @@ export function rankFixtures(extraction: Extraction): ScanReport {
     ]
       .filter((item): item is typeof item & { odds: number } => item.odds !== null)
       .sort((a, b) => a.odds - b.odds);
-    if (
-      !reason &&
-      (!options[1] || options[1].odds - options[0].odds < RANKING_RULES.minimumOddsGap - 1e-9)
-    ) {
-      reason = "No distinct market favourite: shortest odds must differ by at least 0.05.";
-    }
     if (reason) {
       excluded.push({ fixtureIndex, reason });
       return;
     }
     const favourite = options[0];
-    if (favourite.option === "draw") {
-      excluded.push({
-        fixtureIndex,
-        reason: "The market favourite is a draw, not a team selection.",
-      });
-      return;
-    }
     candidates.push({
       ...favourite,
       rank: 0,
@@ -164,30 +150,27 @@ export function rankFixtures(extraction: Extraction): ScanReport {
   candidates.sort((a, b) => a.odds - b.odds || a.fixtureIndex - b.fixtureIndex);
   const rankings: ScanReport["rankings"] = [];
   const matches = new Set<string>();
-  const teams = new Set<string>();
   for (const candidate of candidates) {
     const fixture = extraction.fixtures[candidate.fixtureIndex];
     const match = [fixture.home!, fixture.away!]
       .map((team) => team.trim().toLowerCase())
       .sort()
       .join("|");
-    const team = candidate.label.trim().toLowerCase();
-    if (matches.has(match) || teams.has(team)) {
+    if (matches.has(match)) {
       excluded.push({
         fixtureIndex: candidate.fixtureIndex,
-        reason: "Duplicate match or selected team.",
+        reason: "Duplicate match.",
       });
       continue;
     }
     if (rankings.length === RANKING_RULES.maximumSelections) {
       excluded.push({
         fixtureIndex: candidate.fixtureIndex,
-        reason: "Outside the top two qualifying team selections.",
+        reason: "Outside the top two lowest-odds match selections.",
       });
       continue;
     }
     matches.add(match);
-    teams.add(team);
     rankings.push({ ...candidate, rank: rankings.length + 1 });
   }
   return {
