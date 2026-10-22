@@ -297,20 +297,12 @@ Other accounts keep the existing popup schedules.
 
 ## Test-account payment approval
 
-Activation and session payments submitted by `Ygodds18@gmail.com` or
-`Casinoworld@gmail.com` are automatically
-approved in the database (case-insensitive email match). Receipts and transaction
-records and tester status are retained, but tester labels are hidden in the admin
-member list and transaction member details. These
-payments never count toward daily, total, or partner revenue. Activation payments
-are enabled for both games. Migration
-`0009_auto_approve_test_account.sql` also approves this account's existing pending
-payments; rejected payments remain rejected. All other accounts still require
-admin approval.
-Migration `0010_casinoworld_test_account.sql` extends this behavior to
-`Casinoworld@gmail.com`, excludes its existing payments from revenue, and approves
-its pending payments. Session and virtual-credit payments still require a receipt
-and admin approval for accounts without test-account auto-approval.
+Migration `0018_remove_email_auto_approval.sql` removes all email-based automatic
+payment approvals. New activation, session and virtual-credit payments require
+normal admin confirmation, including former free-pass accounts. Previously
+confirmed payments, existing access, accounts and transaction records are
+preserved. Test-account revenue exclusion remains unchanged so historical testing
+is not counted as income. Earlier migrations retain their original contents.
 
 ## Admin access
 

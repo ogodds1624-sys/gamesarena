@@ -61,6 +61,25 @@ test("only the specified accounts auto-approve with records retained and revenue
     assert.equal((await db.query("select status from payments where id = 'session'")).rows[0].status, "rejected");
     assert.equal((await db.query("select count(*)::integer as count from payments")).rows[0].count, 9);
     assert.equal((await db.query("select count(*)::integer as count from payments where status = 'confirmed' and counts_revenue is not false")).rows[0].count, 0);
+    await db.exec(await readFile(new URL("../migrations/0018_remove_email_auto_approval.sql", import.meta.url), "utf8"));
+    for (const userId of ["test", "casino", "normal", "other-test"]) {
+      for (const purpose of ["activation", "session"]) {
+        const id = `no-free-pass-${userId}-${purpose}`;
+        await db.query('insert into "user" (id,email) select $1,email from "user" where id=$2', [id, userId]);
+        await db.query(
+          "insert into payments (id,user_id,amount,status,receipt,purpose) values ($1,$2,300,'pending','proof',$3)",
+          [id, id, purpose],
+        );
+        assert.equal((await db.query("select status from payments where id=$1", [id])).rows[0].status, "pending");
+        await db.query("update payments set amount=301 where id=$1", [id]);
+        assert.equal((await db.query("select status from payments where id=$1", [id])).rows[0].status, "pending");
+        await db.query("update payments set status='confirmed',confirmed_at=now() where id=$1", [id]);
+        assert.equal((await db.query("select status from payments where id=$1", [id])).rows[0].status, "confirmed");
+      }
+    }
+    assert.equal((await db.query("select status from payments where id='existing'")).rows[0].status, "confirmed");
+    assert.equal((await db.query("select status from payments where id='rejected'")).rows[0].status, "rejected");
+    assert.equal((await db.query('select count(*)::integer as count from "user" where id in (\'test\',\'casino\',\'normal\',\'other-test\')')).rows[0].count, 4);
   } finally {
     await db.close();
   }
